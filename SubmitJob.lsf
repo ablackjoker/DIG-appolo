@@ -1,0 +1,18 @@
+#!/bin/bash
+#BSUB -J Kn0.1Cylinder                          ### set the job Name
+#BSUB -q short                                  ### specify queue
+#BSUB -n 160                                    ### ask for number of cores (default: 1)
+#BSUB -R "span[ptile=40]"                       ### ask for 40 cores per node
+#BSUB -o stdout_%J.out                          ### Specify the output and error file. %J is the job-id
+#BSUB -e stderr_%J.err                          ### -o and -e mean append, -oo and -eo mean overwrite
+
+# module load mpi/mpich/3.3.1_intel
+# module purge
+# module load mpi/intel/2018.4
+# module load valgrind/3.14.0
+# module load intel/2018.4
+
+mpirun -np 160 ./main_mpiDSMC_ht > log.txt
+
+
+
