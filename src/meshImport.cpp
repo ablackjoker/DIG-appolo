@@ -1045,7 +1045,7 @@ bool meshImport::out2Fluent_ns2(const char *filePath, double *qf)
     if (!(temperatureScale > 0.0) || !isfinite(temperatureScale)) temperatureScale = 1.0;
 
     double velocityScale =
-        this->mess.Ma * sqrt(this->mess.gamma) * this->mess.v_in / this->mess.v_rms;
+        sqrt(this->mess.gamma) * this->mess.v_in / this->mess.v_rms;
     if (!(velocityScale > 0.0) || !isfinite(velocityScale)) velocityScale = 1.0;
         
     for (int i = 0; i < this->zonemap.size(); i++){
@@ -1116,7 +1116,7 @@ bool meshImport::out2Fluent_dsmc(const char *filePath, double *w)
     if (!(temperatureScale > 0.0) || !isfinite(temperatureScale)) temperatureScale = 1.0;
 
     double velocityScale =
-        this->mess.Ma * sqrt(this->mess.gamma / 2.0) * this->mess.v_in / this->mess.v_rms;
+        sqrt(this->mess.gamma / 2.0) * this->mess.v_in / this->mess.v_rms;
     if (!(velocityScale > 0.0) || !isfinite(velocityScale)) velocityScale = 1.0;
 
     const double stressScale = temperatureScale;
@@ -1219,7 +1219,7 @@ bool meshImport::out2Fluent_ns6(const char *filePath, double *w)
     if (!(temperatureScale > 0.0) || !isfinite(temperatureScale)) temperatureScale = 1.0;
 
     double velocityScale =
-        this->mess.Ma * sqrt(this->mess.gamma) * this->mess.v_in / this->mess.v_rms;
+        sqrt(this->mess.gamma) * this->mess.v_in / this->mess.v_rms;
     if (!(velocityScale > 0.0) || !isfinite(velocityScale)) velocityScale = 1.0;
 
     for (int i = 0; i < this->zonemap.size(); i++){
