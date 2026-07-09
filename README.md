@@ -55,12 +55,6 @@ The default mesh path is:
 ./mesh/3dapollo372500.cas
 ```
 
-The mesh path can also be passed as the first command-line argument:
-
-```bash
-mpirun -np 160 ./main_mpiDSMC_ht ./mesh/3dapollo372500.cas
-```
-
 The current code has the mesh cell count hard-coded in `src/meshImport.h`:
 
 ```cpp
@@ -68,22 +62,6 @@ const int NCELL = 372500;
 ```
 
 If a different mesh is used, make sure this value matches the mesh cell count.
-
-Important default case parameters are also set in the source code, including:
-
-```cpp
-const int NTOTAL = 10000;
-const int Npinitial = 100;
-const int NSS = 5000;
-const int NSCHEME = 2000;
-const int ifgsis = 1;
-```
-
-The main program sets the freestream/case parameters with:
-
-```cpp
-mesh->setMa_Kn_CFL(5, 0.01, 1e2, 1e3, 5);
-```
 
 ## Run
 
