@@ -98,12 +98,6 @@ code and run script accordingly:
 mpirun -np 160 ./main_mpiDSMC_ht > log.txt
 ```
 
-The mesh file can also be passed explicitly:
-
-```bash
-mpirun -np 160 ./main_mpiDSMC_ht ./mesh/3dapollo372500.cas > log.txt
-```
-
 `SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
 on another system, update the queue name, core count, module loads, executable
 path, and any mesh/output paths to match that machine:
