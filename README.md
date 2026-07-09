@@ -63,6 +63,27 @@ const int NCELL = 372500;
 
 If a different mesh is used, make sure this value matches the mesh cell count.
 
+## Basic Case Parameters
+
+The current Apollo case is configured in the source code with the following
+basic settings:
+
+| Quantity | Value |
+| --- | --- |
+| Freestream Mach number | `Ma = 5` |
+| Knudsen number | `Kn = 0.01` |
+| Angle of attack | `30 deg` |
+| Reference length | `L0 = 3.912 m` |
+| Freestream temperature | `T_in = 142.2 K` |
+| Wall temperature | `T_w = 300 K` |
+| Reference temperature | `T_ref = 273.15 K` |
+| Mesh cell count | `NCELL = 372500` |
+| Initial particles per cell | `Npinitial = 100` |
+| Approximate initial particle count | `37250000` |
+| Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
+| Exponential averaging startup steps | `NSCHEME = 2000` |
+| Sampling start step | `NSS = 5000` |
+
 ## Run
 
 `SubmitJob.lsf` is not required for running the code. If MPI is available and
