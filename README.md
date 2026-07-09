@@ -87,13 +87,26 @@ mesh->setMa_Kn_CFL(5, 0.01, 1e2, 1e3, 5);
 
 ## Run
 
-Typical MPI run:
+`SubmitJob.lsf` is not required for running the code. If MPI is available and
+the working directory and paths are set correctly, the executable can be run
+directly with `mpirun`.
+
+Run from the repository root, or update the relative mesh/output paths in the
+code and run script accordingly:
 
 ```bash
 mpirun -np 160 ./main_mpiDSMC_ht > log.txt
 ```
 
-For an LSF cluster, use:
+The mesh file can also be passed explicitly:
+
+```bash
+mpirun -np 160 ./main_mpiDSMC_ht ./mesh/3dapollo372500.cas > log.txt
+```
+
+`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
+on another system, update the queue name, core count, module loads, executable
+path, and any mesh/output paths to match that machine:
 
 ```bash
 bsub < SubmitJob.lsf
