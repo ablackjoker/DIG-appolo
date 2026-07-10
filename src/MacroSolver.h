@@ -1,19 +1,20 @@
+/*
+ * Macroscopic NS/G13 solver state and numerical method API.
+ */
+
 #pragma once
 #include "meshImport.h"
 #include "MessagePassing.h"
 #include "MpiContext.h"
 #include "BoundaryCondition.h"
 
-
 class MesoSolver;
 
+// MacroSolver stores state used by this module.
 class MacroSolver
 {
-    
 private:
-    
 public:
-
     int iSize, iRank, size, rank;
     int iNcell, Ncell, iNface, eNface, Nface, var, Nl, Nr;
     meshMessage mess;
@@ -29,122 +30,139 @@ public:
     double *sendBuf = NULL, *recBuf = NULL, *fluxTotal = NULL;
     int *NsreMeIndex = NULL, *NsreMeIndex2 = NULL;
     const MpiContext* mpi = nullptr;
-
     double Cx[5][5], Cy[9], Cz[9], qxyz[5][4][3], mxyz[5][4][3], wxyz[5][4][3], nxyz[5][4][3], txyz[5][4][3], rxyz[5][4][3];
-
     MPI_Status *status = NULL; MPI_Request *request = NULL;
     MPI_Comm myGroup;
     MPI_Comm comm;
     MessagePassing *mpass = NULL;
-
     double *tVector = NULL;
-
+// mallocSpace: performs one solver support operation.
     bool mallocSpace( );
     void bcClassification();
     void dyparcells();
+// scatter_counts (counts_or_null, my, comm): moves structured data through MPI.
     void scatter_counts(vector<int> counts_or_null,int& my, MPI_Comm comm);
     void cell_cell_initial();
+// edge_cell_initial: works with mesh topology or geometric intersections.
     void edge_cell_initial();
-
     MacroSolver();
     MacroSolver(meshImport *mesh, meshMessage mess, MessagePassing *mpass, const MpiContext& mpiCtx);
-    
+// ~MacroSolver: releases owned buffers and MPI helper state.
     ~MacroSolver();
-
     bool active() const { return mpi != nullptr ? mpi->active() : myGroup != MPI_COMM_NULL; }
     bool root() const { return mpi != nullptr ? mpi->root() : myGroup == MPI_COMM_NULL; }
+// activeLeader: performs one solver support operation.
     bool activeLeader() const { return active() && iRank == 0; }
-
     bool initialW();
     bool initialBC();
+// noreconstrucion (gsisTag): performs one solver support operation.
     bool noreconstrucion(bool gsisTag);
     bool reconstruction(bool gsisTag);
+// updateBC (gsisTag): writes solver fields or diagnostics.
     bool updateBC(bool gsisTag);
     bool applyNSEG13BoundaryFluxes();
-
     bool noSlipIsothermalWall2(double *qf, vector<int> wallVis);
+// pressureOutlet (pout, wallVis): writes solver fields or diagnostics.
     bool pressureOutlet(double pout, vector<int> wallVis);
     bool massWall(double fin, double t, vector<int> wallVis);
     bool symmetry(vector<int> symm);
-
+// rhs2Zero: performs one solver support operation.
     void rhs2Zero();
     bool calcTimestep();
+// calcSource: prepares derived solver state.
     bool calcSource();
     bool Rusanov(bool gsisTag);
     bool SLAU2(bool gsisTag);
+// ROEflux (gsisTag): computes finite-volume flux terms.
     bool ROEflux(bool gsisTag);
     bool AUSMPWPlus(bool gsisTag);
     void calcCellViscous();
+// viscousFlux (gsisTag): computes finite-volume flux terms.
     bool viscousFlux(bool gsisTag);
     bool implicitSolver(bool gsisTag);
     void eigen(double *lambda);
+// normalFlux (qf, Qc, enormal): computes finite-volume flux terms.
     bool normalFlux(double *qf, double *Qc, double *enormal);
     bool nsProcess(int maxIter, double maxError, bool gsisTag, int ITER);
+// nsProcessG13 (maxIter, maxError, gsisTag, ITER): performs one solver support operation.
     bool nsProcessG13(int maxIter, double maxError, bool gsisTag, int ITER);
     bool convectionFlux(int tag, bool gsisTag);
     double convectionFunction(double *qf, double *Qc, double *enormal);
+// qf2Qc (qf, Qc): performs one solver support operation.
     bool qf2Qc(double *qf, double *Qc);
     bool Qc2qf(double *Qc, double *qf);
     bool conservation2Origin();
+// origin2Conservation: performs one solver support operation.
     bool origin2Conservation();
     double psLeft(const double ma);
+// psRight (ma): performs one solver support operation.
     double psRight(const double ma);
     double msLeft(const double ma);
     double msRight(const double ma);
+// slau2Function (fl, fr, ul, ur, m, pt, enormal): computes finite-volume flux terms.
     bool slau2Function(double *fl, double *fr, double *ul, double *ur, double &m, double &pt, const double *enormal);
     bool slau2Function2(const double *f, double *ut, const double *enormal);
     void clacSlauPsi(const double *qf, double *psi);
+// ausmFunction (fl, fr, mlpt, mrnt, ps, norm): computes finite-volume flux terms.
     void ausmFunction(double *fl, double *fr, double &mlpt, double &mrnt, double &ps, const double *norm);
     double ausmF(const double &p, const double &ps, const double &m);
-
     void initialParts();
+// initialParallel: prepares derived solver state.
     void initialParallel();
     void freeParallel();
+// packQfQc: moves structured data through MPI.
     void packQfQc();
     void unPackQfQc();
     void unPackFlux();
+// packDeltaW: moves structured data through MPI.
     void packDeltaW();
     void unPackDeltaW();
-    
     bool leastSquareGrad();
+// limiter (gsisTag): performs one solver support operation.
     bool limiter(bool gsisTag);  
     bool limiter2(bool gsisTag);
+// numpyDeepCopy2D (m, n, A, B): performs one solver support operation.
     bool numpyDeepCopy2D(int m, int n, double **A, double **B); 
     double calcMaxError(double **wt, double **qf);
     double calcError(int i, double **wt, double **qf);
+// out2dat (filename): writes solver fields or diagnostics.
     bool out2dat(const char *filename);
     bool nsout2dat(int istep, double **Q,int startcell, int endcell);
     void cellDeepCopy(cell &c1, const cell &c2);
+// edgeDeepCopy (e1, e2): performs one solver support operation.
     void edgeDeepCopy(edge &e1, const edge &e2);
-    
     void calcCellHot(int istep);
     double BarthJespersen(const double &umax, const double &umin, const double &u, const double &g);
+// Venkatakrishnan1 (umax, umin, u, g, area): performs one solver support operation.
     double Venkatakrishnan1(const double &umax, const double &umin, const double &u, const double &g, const double &area);
     double Venkatakrishnan2(const double &umax, const double &umin, const double &u, const double &g, const double &area);
+// Venkatakrishnan3 (umax, umin, u, g, area): performs one solver support operation.
     double Venkatakrishnan3(const double &umax, const double &umin, const double &u, const double &g, const double &area);
     double Venkatakrishnan5(const double &umax, const double &umin, const double &u, const double &g, const double &area);
     double Wang(const double &umax, const double &umin, const double &u, const double &g);
+// minLimter (umax, umin, u, g, area): performs one solver support operation.
     double minLimter(const double &umax, const double &umin, const double &u, const double &g, const double &area);
-
-
     bool Flux_NSEG13_bcWall(vector<int> wallVis);
     bool Flux_NSEG13_bcWallWithT(double T, vector<int> wallVis);
+// Flux_NSEG13_bcWallNew (wf, wallVis): applies boundary-condition behavior.
     bool Flux_NSEG13_bcWallNew(const double *wf, vector<int> wallVis);
     bool Flux_NSEG13_inlet(vector<int> wallVis);
+// Flux_NSEG13_outlet (wallVis): writes solver fields or diagnostics.
     bool Flux_NSEG13_outlet(vector<int> wallVis);
     bool Flux_NSEG13_massIn(double fin, double t, vector<int> wallVis);
     bool Flux_NSEG13_pressureIn(double pin, double t, vector<int> wallVis);
+// Flux_NSEG13_pressureOut (pout, wallVis): writes solver fields or diagnostics.
     bool Flux_NSEG13_pressureOut(double pout, vector<int> wallVis); 
-    
     bool calcFlux_IFV2(double *WI, double *sq, double *enormal, double *IFv, double *a, bool tag, int index);
     void calcG13Sigma(int l, double *gm, double *ds, double *sq);
-
+// CalculateTangentialVector: works with mesh topology or geometric intersections.
     void CalculateTangentialVector();
     void calcMassFlow(vector<int> wallVis);
-
     void AUSM_Plus_Up(bool gsisTag);
+// ausmPlusUpFunction (fl, fr, mlpt, mrnt, ps, norm): computes finite-volume flux terms.
     void ausmPlusUpFunction(double *fl, double *fr, double &mlpt, double &mrnt, double &ps, const double *norm);
     double maSplit1(double ma, const int &sgn);
+// maSplit2 (ma, sgn): performs one solver support operation.
     double maSplit2(double ma, const int &sgn);
     double maSplit4(double ma, const int &sgn, const double &beta);
     double pSplit5(double ma, const int &sgn, const double &alpha);

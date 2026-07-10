@@ -1,3 +1,7 @@
+/*
+ * MPI datatype creation plus particle and field packet exchange.
+ */
+
 #include "MessagePassing.h"
 #include "MeshparticalInitial.h"
 
@@ -6,6 +10,17 @@
 
 namespace
 {
+/*
+ * prefixCounts: performs one solver support operation.
+ * Params: counts, displs, total; returns: none.
+ * Flow:
+ *   - check inputs.
+ *   - process local arrays.
+ *   - update outputs or member state.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 void prefixCounts(const std::vector<int> &counts, std::vector<int> &displs, int &total)
 {
     displs.assign(counts.size(), 0);
@@ -16,7 +31,17 @@ void prefixCounts(const std::vector<int> &counts, std::vector<int> &displs, int 
         total += counts[i];
     }
 }
-
+/*
+ * exchangeFlatPayload: moves structured data through MPI.
+ * Params: sendData, sendCounts, sendDispls, datatype, recvData, recvCounts, recvDispls, mpi; returns: success or decision flag.
+ * Flow:
+ *   - gather load/owner data.
+ *   - build the new mapping.
+ *   - refresh dependent local state.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool exchangeFlatPayload(const void *sendData,
                          const std::vector<int> &sendCounts,
                          const std::vector<int> &sendDispls,
@@ -38,10 +63,32 @@ bool exchangeFlatPayload(const void *sendData,
 }
 }
 
+/*
+ * MessagePassing: initializes MessagePassing state.
+ * Params: none; returns: none.
+ * Flow:
+ *   - check inputs.
+ *   - process local arrays.
+ *   - update outputs or member state.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 MessagePassing::MessagePassing()
 {
 }
 
+/*
+ * ~MessagePassing: releases owned buffers and MPI helper state.
+ * Params: none; returns: none.
+ * Flow:
+ *   - check inputs.
+ *   - process local arrays.
+ *   - update outputs or member state.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 MessagePassing::~MessagePassing()
 {
     int initialized = 0;
@@ -61,11 +108,21 @@ MessagePassing::~MessagePassing()
     }
 }
 
+/*
+ * commitMyDsmcCell: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
 {
     const int Len = 8;
     DsmcCell c;
-
     MPI_Aint offsets[Len];
     int blockcounts[Len] = {
         1,          
@@ -77,7 +134,6 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
         1,          
         DIM         
     };
-
     MPI_Datatype types[Len] = {
         MPI_INT,
         MPI_INT,
@@ -88,7 +144,6 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
         MPI_INT,
         MPI_DOUBLE
     };
-
     MPI_Get_address(&c.num,              &offsets[0]);
     MPI_Get_address(&c.fluentCellType,   &offsets[1]);
     MPI_Get_address(&c.cell2face[0],     &offsets[2]);
@@ -97,21 +152,28 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
     MPI_Get_address(&c.area,             &offsets[5]);
     MPI_Get_address(&c.no,               &offsets[6]);
     MPI_Get_address(&c.cellXY[0],        &offsets[7]);
-
     for (int i = 1; i < Len; ++i) offsets[i] -= offsets[0];
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, types, &datatype);
     MPI_Type_commit(&datatype);
     return true;
 }
 
-
+/*
+ * commitMyDsmcEdge: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
 {
     const int Len = 6;
     DsmcEdge e;
-
     MPI_Aint offsets[Len];
     int blockcounts[Len] = {
         1,      
@@ -121,7 +183,6 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
         DIM,     
         DIM    
     };
-
     MPI_Datatype types[Len] = {
         MPI_INT,
         MPI_INT,
@@ -130,7 +191,6 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
         MPI_DOUBLE,
         MPI_DOUBLE
     };
-
     MPI_Get_address(&e.faceTag,        &offsets[0]);
     MPI_Get_address(&e.faceType,       &offsets[1]);
     MPI_Get_address(&e.length,         &offsets[2]);
@@ -139,12 +199,22 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
     MPI_Get_address(&e.edgeCenter[0],  &offsets[5]);
     for (int i = 1; i < Len; ++i) offsets[i] -= offsets[0];
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, types, &datatype);
     MPI_Type_commit(&datatype);
     return true;
 }
 
+/*
+ * commitMyCell: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyCell(MPI_Datatype &datatype)
 {
     const int Len = 14;
@@ -156,18 +226,26 @@ bool MessagePassing::commitMyCell(MPI_Datatype &datatype)
     MPI_Get_address(&c.cell2face[0], &offsets[3]); MPI_Get_address(&c.cell2cell[0], &offsets[4]); MPI_Get_address(&c.cell2face_sgn[0], &offsets[5]);
     MPI_Get_address(&c.area, &offsets[6]); MPI_Get_address(&c.cellLengthEff, &offsets[7]); MPI_Get_address(&c.Ainv[0][0], &offsets[8]);
     MPI_Get_address(&c.dxyz[0][0], &offsets[9]); MPI_Get_address(&c.cellType, &offsets[10]); MPI_Get_address(&c.rawCellType, &offsets[11]); MPI_Get_address(&c.no, &offsets[12]);MPI_Get_address(&c.cellXY[0], &offsets[13]);
-
     for(int i=1; i<Len; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
+/*
+ * commitMyEdge: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyEdge(MPI_Datatype &datatype)
 {
     const int Len = 13;
@@ -182,21 +260,26 @@ bool MessagePassing::commitMyEdge(MPI_Datatype &datatype)
     MPI_Get_address(&e.edgeNormal[0], &offsets[8]);  MPI_Get_address(&e.edgeDist, &offsets[9]); 
     MPI_Get_address(&e.edgerij[0], &offsets[10]);
     MPI_Get_address(&e.edgerL[0], &offsets[11]); MPI_Get_address(&e.edgerR[0], &offsets[12]);
-
     for(int i=1; i<Len; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0;
-    
-    
-    
-    
     MPI_Type_create_struct(Len, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
+/*
+ * commitMyMesssge: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyMesssge(MPI_Datatype &datatype)
 {
     meshMessage mess;
@@ -226,27 +309,26 @@ bool MessagePassing::commitMyMesssge(MPI_Datatype &datatype)
     MPI_Get_address(&mess.eta, &offsets[40]);MPI_Get_address(&mess.P_relax, &offsets[41]);MPI_Get_address(&mess.dt_ref, &offsets[42]);
     MPI_Get_address(&mess.T_in, &offsets[43]);MPI_Get_address(&mess.v_in, &offsets[44]);MPI_Get_address(&mess.dtime, &offsets[45]);
     MPI_Get_address(&mess.Neff, &offsets[46]);
-
     for(int i=1; i<47; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0; 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     MPI_Type_create_struct(47, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
+/*
+ * commitMyvis: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitMyvis(MPI_Datatype &datatype)
 {
     fNode fo;
@@ -260,10 +342,20 @@ bool MessagePassing::commitMyvis(MPI_Datatype &datatype)
     offsets[0] = 0; 
     MPI_Type_create_struct(2, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
+/*
+ * commitParticle: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitParticle(MPI_Datatype &datatype)
 {
     const int nitems = 7;
@@ -278,7 +370,6 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
         MPI_DOUBLE
     };
     MPI_Aint offsets[7];
-
     offsets[0] = offsetof(particle, p_serial);
     offsets[1] = offsetof(particle, p_rank_serial);
     offsets[2] = offsetof(particle, p_mesh_serial);
@@ -286,7 +377,6 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
     offsets[4] = offsetof(particle, p_location);
     offsets[5] = offsetof(particle, p_Ir);
     offsets[6] = offsetof(particle, dt_left);
-
     MPI_Datatype rawDatatype = MPI_DATATYPE_NULL;
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rawDatatype);
     MPI_Type_create_resized(rawDatatype, 0, (MPI_Aint)sizeof(particle), &datatype);
@@ -295,10 +385,20 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
     return true;
 }
 
+/*
+ * commitDtleftPacket: moves structured data through MPI.
+ * Params: datatype; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::commitDtleftPacket(MPI_Datatype &datatype)
 {
     if (!ensureParticleDatatype()) return false;
-
     const int nitems = 4;
     int blocklengths[4] = {1, 1, 1, 1};
     MPI_Datatype types[4] = {
@@ -308,12 +408,10 @@ bool MessagePassing::commitDtleftPacket(MPI_Datatype &datatype)
         MPI_INT
     };
     MPI_Aint offsets[4];
-
     offsets[0] = offsetof(DtleftPacket, p);
     offsets[1] = offsetof(DtleftPacket, gface);
     offsets[2] = offsetof(DtleftPacket, gcell);
     offsets[3] = offsetof(DtleftPacket, tri);
-
     MPI_Datatype rawDatatype = MPI_DATATYPE_NULL;
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rawDatatype);
     MPI_Type_create_resized(rawDatatype, 0, (MPI_Aint)sizeof(DtleftPacket), &datatype);
@@ -322,25 +420,57 @@ bool MessagePassing::commitDtleftPacket(MPI_Datatype &datatype)
     return true;
 }
 
+/*
+ * ensureParticleDatatype: writes solver fields or diagnostics.
+ * Params: none; returns: success or decision flag.
+ * Flow:
+ *   - check inputs.
+ *   - process local arrays.
+ *   - update outputs or member state.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::ensureParticleDatatype()
 {
     if (particleDatatype != MPI_DATATYPE_NULL) return true;
     return commitParticle(particleDatatype);
 }
 
+/*
+ * ensureDtleftPacketDatatype: writes solver fields or diagnostics.
+ * Params: none; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::ensureDtleftPacketDatatype()
 {
     if (dtleftPacketDatatype != MPI_DATATYPE_NULL) return true;
     return commitDtleftPacket(dtleftPacketDatatype);
 }
 
+/*
+ * exchangeParticleVectors: moves structured data through MPI.
+ * Params: sendCache, recvCache, mpi, tag; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> &sendCache,
                                              std::vector<std::vector<particle>> &recvCache,
                                              const MpiContext &mpi,
                                              int tag)
 {
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -348,25 +478,19 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int r = 0; r < nrank; ++r)
         sendCounts[(std::size_t)r] = (int)sendCache[(std::size_t)r].size();
-
     if (MPI_Alltoall(sendCounts.data(), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     if (!ensureParticleDatatype()) return false;
-
     std::vector<MPI_Request> requests;
     requests.reserve((std::size_t)nrank * 2u);
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && recvCounts[(std::size_t)mpi.c_rank] > 0)
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -384,7 +508,6 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
             requests.push_back(req);
         }
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -399,16 +522,25 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
             requests.push_back(req);
         }
     }
-
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     {
         return false;
     }
-
     return true;
 }
 
+/*
+ * exchangeParticleVectorsOnPeers: moves structured data through MPI.
+ * Params: sendCache, recvCache, mpi, peerRanks, tag; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<particle>> &sendCache,
                                                     std::vector<std::vector<particle>> &recvCache,
                                                     const MpiContext &mpi,
@@ -416,7 +548,6 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
                                                     int tag)
 {
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -424,23 +555,19 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<char> peerMask((std::size_t)nrank, 0);
     for (int peer : peerRanks)
     {
         if (peer >= 0 && peer < nrank && peer != mpi.c_rank)
             peerMask[(std::size_t)peer] = 1;
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
         if (!peerMask[(std::size_t)r] && !sendCache[(std::size_t)r].empty())
             return false;
     }
-
     if (!ensureParticleDatatype()) return false;
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int peer : peerRanks)
@@ -448,7 +575,6 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
         if (peer < 0 || peer >= nrank || peer == mpi.c_rank) continue;
         sendCounts[(std::size_t)peer] = (int)sendCache[(std::size_t)peer].size();
     }
-
     const int countTag = tag + 10000;
     std::vector<MPI_Request> countRequests;
     countRequests.reserve(peerRanks.size() * 2u);
@@ -473,10 +599,8 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
     if (!countRequests.empty() &&
         MPI_Waitall((int)countRequests.size(), countRequests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && !sendCache[(std::size_t)mpi.c_rank].empty())
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     std::vector<MPI_Request> requests;
     requests.reserve(peerRanks.size() * 2u);
     for (int peer : peerRanks)
@@ -507,10 +631,20 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     return true;
 }
 
+/*
+ * exchangeDtleftPacketVectors: moves structured data through MPI.
+ * Params: sendCache, recvCache, mpi, tag, hadTraffic; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftPacket>> &sendCache,
                                                  std::vector<std::vector<DtleftPacket>> &recvCache,
                                                  const MpiContext &mpi,
@@ -519,7 +653,6 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
 {
     if (hadTraffic != nullptr) *hadTraffic = false;
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -527,17 +660,14 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int r = 0; r < nrank; ++r)
         sendCounts[(std::size_t)r] = (int)sendCache[(std::size_t)r].size();
-
     if (MPI_Alltoall(sendCounts.data(), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     if (hadTraffic != nullptr)
     {
         for (int r = 0; r < nrank; ++r)
@@ -549,15 +679,11 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             }
         }
     }
-
     if (!ensureDtleftPacketDatatype()) return false;
-
     std::vector<MPI_Request> requests;
     requests.reserve((std::size_t)nrank * 2u);
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && recvCounts[(std::size_t)mpi.c_rank] > 0)
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -575,7 +701,6 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             requests.push_back(req);
         }
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -590,16 +715,25 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             requests.push_back(req);
         }
     }
-
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     {
         return false;
     }
-
     return true;
 }
 
+/*
+ * exchangeDtleftPacketVectorsOnPeers: moves structured data through MPI.
+ * Params: sendCache, recvCache, mpi, peerRanks, tag, hadTraffic; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<DtleftPacket>> &sendCache,
                                                         std::vector<std::vector<DtleftPacket>> &recvCache,
                                                         const MpiContext &mpi,
@@ -609,7 +743,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
 {
     if (hadTraffic != nullptr) *hadTraffic = false;
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -617,23 +750,19 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<char> peerMask((std::size_t)nrank, 0);
     for (int peer : peerRanks)
     {
         if (peer >= 0 && peer < nrank && peer != mpi.c_rank)
             peerMask[(std::size_t)peer] = 1;
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
         if (!peerMask[(std::size_t)r] && !sendCache[(std::size_t)r].empty())
             return false;
     }
-
     if (!ensureDtleftPacketDatatype()) return false;
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int peer : peerRanks)
@@ -641,7 +770,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
         if (peer < 0 || peer >= nrank || peer == mpi.c_rank) continue;
         sendCounts[(std::size_t)peer] = (int)sendCache[(std::size_t)peer].size();
     }
-
     const int countTag = tag + 10000;
     std::vector<MPI_Request> countRequests;
     countRequests.reserve(peerRanks.size() * 2u);
@@ -666,7 +794,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
     if (!countRequests.empty() &&
         MPI_Waitall((int)countRequests.size(), countRequests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     if (hadTraffic != nullptr)
     {
         if (!sendCache[(std::size_t)mpi.c_rank].empty())
@@ -681,10 +808,8 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
             }
         }
     }
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && !sendCache[(std::size_t)mpi.c_rank].empty())
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     std::vector<MPI_Request> requests;
     requests.reserve(peerRanks.size() * 2u);
     for (int peer : peerRanks)
@@ -715,9 +840,19 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     return true;
 }
+/*
+ * exchangeFixedWidthDoublePackets: moves structured data through MPI.
+ * Params: sendCounts, sendGids, sendValues, valueWidth, recvGids, recvValues, mpi; returns: success or decision flag.
+ * Flow:
+ *   - prepare counts or datatypes.
+ *   - perform MPI transfer.
+ *   - store received data.
+ * Side effects are kept in object fields, buffers, files, or MPI-visible data.
+ * Callers are expected to provide valid local/global indices and initialized solver state.
+ * Uses the current local/global ownership maps prepared by initialization.
+ */
 bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sendCounts,
                                                      const std::vector<int> &sendGids,
                                                      const std::vector<double> &sendValues,
@@ -732,11 +867,9 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         recvValues.clear();
         return true;
     }
-
     const int nrank = mpi.c_size;
     if (nrank <= 0 || valueWidth <= 0 || (int)sendCounts.size() != nrank)
         return false;
-
     int expectedSend = 0;
     bool localOk = true;
     for (int c : sendCounts)
@@ -748,29 +881,24 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         expectedSend != (int)sendGids.size() ||
         expectedSend * valueWidth != (int)sendValues.size())
         localOk = false;
-
     int localOkInt = localOk ? 1 : 0;
     std::vector<int> allOk((std::size_t)nrank, 0);
     MPI_Allgather(&localOkInt, 1, MPI_INT, allOk.data(), 1, MPI_INT, mpi.calGroup);
     if (std::find(allOk.begin(), allOk.end(), 0) != allOk.end())
         return false;
-
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     if (MPI_Alltoall(const_cast<int*>(sendCounts.data()), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     std::vector<int> sdispls;
     std::vector<int> rdispls;
     int sendTotal = 0;
     int recvTotal = 0;
     prefixCounts(sendCounts, sdispls, sendTotal);
     prefixCounts(recvCounts, rdispls, recvTotal);
-
     recvGids.assign((std::size_t)recvTotal, 0);
     recvValues.assign((std::size_t)recvTotal * (std::size_t)valueWidth, 0.0);
-
     if (!exchangeFlatPayload(sendGids.empty() ? nullptr : sendGids.data(),
                              sendCounts,
                              sdispls,
@@ -780,7 +908,6 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
                              rdispls,
                              mpi))
         return false;
-
     std::vector<int> sendCountsV((std::size_t)nrank, 0);
     std::vector<int> recvCountsV((std::size_t)nrank, 0);
     std::vector<int> sdisplsV((std::size_t)nrank, 0);
@@ -792,7 +919,6 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         sdisplsV[(std::size_t)r] = sdispls[(std::size_t)r] * valueWidth;
         rdisplsV[(std::size_t)r] = rdispls[(std::size_t)r] * valueWidth;
     }
-
     if (!exchangeFlatPayload(sendValues.empty() ? nullptr : sendValues.data(),
                              sendCountsV,
                              sdisplsV,
@@ -802,6 +928,5 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
                              rdisplsV,
                              mpi))
         return false;
-
     return true;
 }
