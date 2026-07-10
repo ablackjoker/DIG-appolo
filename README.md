@@ -91,7 +91,6 @@ The current cavity case is configured in the source code with the following basi
 
 | Quantity | Value |
 | --- | --- |
-| Mach number parameter | `Ma = 5` |
 | Knudsen number | `Kn = 0.1` |
 | Reference temperature | `T_ref = 273.15 K` |
 | Cavity gas/reference temperature | `T_in = 273.15 K` |
