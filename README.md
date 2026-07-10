@@ -1,8 +1,6 @@
-# DIG-appolo
+# DIG Cavity Case
 
-This branch (`cavity-case`) contains the cavity-case variant derived from the Apollo case. See `docs/changes_from_apollo.md` for the main case changes.
-
-DSMC/NS parallel solver case for the Apollo mesh.
+This branch (`cavity-case`) contains the lid-driven cavity case derived from the Apollo return-capsule case. The main code-level changes from Apollo are summarized in `docs/changes_from_apollo.md`.
 
 ## Basic Requirements
 
@@ -51,57 +49,88 @@ make
 
 ## Mesh And Case Settings
 
-The default mesh path is:
+The default mesh path is set in `src/meshImportTest.cpp`:
 
 ```text
-./mesh/3dapollo372500.cas
+./mesh/cavity_216000_01.cas
 ```
 
-The current code has the mesh cell count hard-coded in `src/meshImport.h`:
+The corresponding mesh file is tracked in this branch:
+
+```text
+mesh/cavity_216000_01.cas
+```
+
+The mesh cell count is hard-coded in `src/meshImport.h`:
 
 ```cpp
-const int NCELL = 372500;
+const int NCELL = 216000;
 ```
 
-If a different mesh is used, make sure this value matches the mesh cell count.
+If a different cavity mesh is used, update both the mesh path and `NCELL` so they match.
+
+## Boundary Setup
+
+The cavity case uses closed boundaries. There is no inlet/outlet particle injection.
+
+| Fluent tag | Role | Model | Notes |
+| --- | --- | --- | --- |
+| `3` | Interface | None | Partition/interface boundary |
+| `4` | TopWall | Diffuse/isothermal moving wall | `u_wall = 1.0`, `T_wall = 1.0` |
+| `5` | Wall | Diffuse/isothermal stationary wall | `Twall_ref = 1.0` |
+
+The inlet preprocessing call is disabled in `src/meshImportTest.cpp`:
+
+```cpp
+// process->preprocesseffquad(istep);
+```
 
 ## Basic Case Parameters
 
-The current Apollo case is configured in the source code with the following
-basic settings:
+The current cavity case is configured in the source code with the following basic settings:
 
 | Quantity | Value |
 | --- | --- |
-| Freestream Mach number | `Ma = 5` |
-| Knudsen number | `Kn = 0.01` |
-| Angle of attack | `30 deg` |
-| Reference length | `L0 = 3.912 m` |
-| Freestream temperature | `T_in = 142.2 K` |
-| Wall temperature | `T_w = 300 K` |
+| Mach number parameter | `Ma = 5` |
+| Knudsen number | `Kn = 0.1` |
 | Reference temperature | `T_ref = 273.15 K` |
-| Mesh cell count | `NCELL = 372500` |
+| Cavity gas/reference temperature | `T_in = 273.15 K` |
+| Reference number density | `n_ref = 2.685e25` |
+| Wall temperature | `Twall_ref = 1.0` |
+| Moving wall speed | `u_wall = 1.0` |
+| Moving wall temperature | `T_wall = 1.0` |
+| Mesh cell count | `NCELL = 216000` |
 | Initial particles per cell | `Npinitial = 100` |
-| Approximate initial particle count | `37250000` |
+| Approximate initial particle count | `21600000` |
 | Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
-| Exponential averaging startup steps | `NSCHEME = 2000` |
-| Sampling start step | `NSS = 5000` |
+| Exponential averaging startup steps | `NSCHEME = 500` |
+| Sampling start step | `NSS = 3000` |
+| DIG coupling interval | `NGSIS = 200` |
+
+## Solver Notes
+
+This cavity branch also changes several solver settings from the Apollo case:
+
+- NS initial field is stationary: `rho = 1.0`, `u = v = w = 0.0`, `T = T_wall`.
+- Top wall uses the moving-wall G13 boundary flux `Flux_NSEG13_bcWallwithVelocity`.
+- NS convection flux uses SLAU2 through `convectionFlux(2)`.
+- GSIS implicit coefficient uses `coe_omega = 5.0`.
+- GSIS macro solver iterations are set to `nsProcess(200, ...)`.
+- `FourierUpdateDensity()` is disabled and `origin2Conservation()` is used after DSMC-to-NS transfer.
+- DSMC-to-NS macro lower-bound and Kn-cell filters are disabled for this cavity configuration.
+- Output velocity scaling is set to `1.0` for cavity post-processing output.
 
 ## Run
 
-`SubmitJob.lsf` is not required for running the code. If MPI is available and
-the working directory and paths are set correctly, the executable can be run
-directly with `mpirun`.
+`SubmitJob.lsf` is not required for running the code. If MPI is available and the working directory and paths are set correctly, the executable can be run directly with `mpirun`.
 
-Run from the repository root, or update the relative mesh/output paths in the
-code and run script accordingly:
+Run from the repository root, or update the relative mesh/output paths in the code and run script accordingly:
 
 ```bash
 mpirun -np 160 ./main_mpiDSMC_ht > log.txt
 ```
 
-`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
-on another system, update the queue name, core count, module loads, executable
-path, and any mesh/output paths to match that machine:
+`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it on another system, update the queue name, core count, module loads, executable path, and any mesh/output paths to match that machine:
 
 ```bash
 bsub < SubmitJob.lsf
@@ -120,3 +149,7 @@ statisticResults/
 ```
 
 DSMC output is written mainly to `statisticResults/`, and NS output is written to `nsTemp/`.
+
+## Notes For GitHub
+
+The `obj/` directory is intentionally ignored and not tracked in this branch because it contains compiled object files.
