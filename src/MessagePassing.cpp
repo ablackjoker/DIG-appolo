@@ -16,7 +16,6 @@ void prefixCounts(const std::vector<int> &counts, std::vector<int> &displs, int 
         total += counts[i];
     }
 }
-
 bool exchangeFlatPayload(const void *sendData,
                          const std::vector<int> &sendCounts,
                          const std::vector<int> &sendDispls,
@@ -65,7 +64,6 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
 {
     const int Len = 8;
     DsmcCell c;
-
     MPI_Aint offsets[Len];
     int blockcounts[Len] = {
         1,          
@@ -77,7 +75,6 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
         1,          
         DIM         
     };
-
     MPI_Datatype types[Len] = {
         MPI_INT,
         MPI_INT,
@@ -88,7 +85,6 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
         MPI_INT,
         MPI_DOUBLE
     };
-
     MPI_Get_address(&c.num,              &offsets[0]);
     MPI_Get_address(&c.fluentCellType,   &offsets[1]);
     MPI_Get_address(&c.cell2face[0],     &offsets[2]);
@@ -97,21 +93,17 @@ bool MessagePassing::commitMyDsmcCell(MPI_Datatype &datatype)
     MPI_Get_address(&c.area,             &offsets[5]);
     MPI_Get_address(&c.no,               &offsets[6]);
     MPI_Get_address(&c.cellXY[0],        &offsets[7]);
-
     for (int i = 1; i < Len; ++i) offsets[i] -= offsets[0];
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, types, &datatype);
     MPI_Type_commit(&datatype);
     return true;
 }
 
-
 bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
 {
     const int Len = 6;
     DsmcEdge e;
-
     MPI_Aint offsets[Len];
     int blockcounts[Len] = {
         1,      
@@ -121,7 +113,6 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
         DIM,     
         DIM    
     };
-
     MPI_Datatype types[Len] = {
         MPI_INT,
         MPI_INT,
@@ -130,7 +121,6 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
         MPI_DOUBLE,
         MPI_DOUBLE
     };
-
     MPI_Get_address(&e.faceTag,        &offsets[0]);
     MPI_Get_address(&e.faceType,       &offsets[1]);
     MPI_Get_address(&e.length,         &offsets[2]);
@@ -139,7 +129,6 @@ bool MessagePassing::commitMyDsmcEdge(MPI_Datatype &datatype)
     MPI_Get_address(&e.edgeCenter[0],  &offsets[5]);
     for (int i = 1; i < Len; ++i) offsets[i] -= offsets[0];
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, types, &datatype);
     MPI_Type_commit(&datatype);
     return true;
@@ -156,15 +145,12 @@ bool MessagePassing::commitMyCell(MPI_Datatype &datatype)
     MPI_Get_address(&c.cell2face[0], &offsets[3]); MPI_Get_address(&c.cell2cell[0], &offsets[4]); MPI_Get_address(&c.cell2face_sgn[0], &offsets[5]);
     MPI_Get_address(&c.area, &offsets[6]); MPI_Get_address(&c.cellLengthEff, &offsets[7]); MPI_Get_address(&c.Ainv[0][0], &offsets[8]);
     MPI_Get_address(&c.dxyz[0][0], &offsets[9]); MPI_Get_address(&c.cellType, &offsets[10]); MPI_Get_address(&c.rawCellType, &offsets[11]); MPI_Get_address(&c.no, &offsets[12]);MPI_Get_address(&c.cellXY[0], &offsets[13]);
-
     for(int i=1; i<Len; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0;
-
     MPI_Type_create_struct(Len, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
@@ -182,32 +168,26 @@ bool MessagePassing::commitMyEdge(MPI_Datatype &datatype)
     MPI_Get_address(&e.edgeNormal[0], &offsets[8]);  MPI_Get_address(&e.edgeDist, &offsets[9]); 
     MPI_Get_address(&e.edgerij[0], &offsets[10]);
     MPI_Get_address(&e.edgerL[0], &offsets[11]); MPI_Get_address(&e.edgerR[0], &offsets[12]);
-
     for(int i=1; i<Len; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0;
-    
-    
-    
-    
     MPI_Type_create_struct(Len, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
 bool MessagePassing::commitMyMesssge(MPI_Datatype &datatype)
 {
     meshMessage mess;
-    MPI_Aint offsets[47];
-    int blockcounts[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    MPI_Aint offsets[49];
+    int blockcounts[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     MPI_Datatype datatypes[] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_DOUBLE, MPI_DOUBLE, \
     MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, \
     MPI_INT, MPI_DOUBLE, MPI_DOUBLE, \
     MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT,\
     MPI_DOUBLE, MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,\
-    MPI_DOUBLE, MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE, MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE};
+    MPI_DOUBLE, MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE, MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE};
     MPI_Get_address(&mess.Ncell, &offsets[0]); MPI_Get_address(&mess.Nface, &offsets[1]); MPI_Get_address(&mess.Npoint, &offsets[2]);
     MPI_Get_address(&mess.Nk, &offsets[3]); MPI_Get_address(&mess.bcnumber, &offsets[4]); MPI_Get_address(&mess.Nghost, &offsets[5]);
     MPI_Get_address(&mess.Area, &offsets[6]); MPI_Get_address(&mess.Ma, &offsets[7]); MPI_Get_address(&mess.Kn, &offsets[8]);
@@ -225,25 +205,13 @@ bool MessagePassing::commitMyMesssge(MPI_Datatype &datatype)
     MPI_Get_address(&mess.d_ref, &offsets[37]);MPI_Get_address(&mess.alpha, &offsets[38]);MPI_Get_address(&mess.v_rms, &offsets[39]);
     MPI_Get_address(&mess.eta, &offsets[40]);MPI_Get_address(&mess.P_relax, &offsets[41]);MPI_Get_address(&mess.dt_ref, &offsets[42]);
     MPI_Get_address(&mess.T_in, &offsets[43]);MPI_Get_address(&mess.v_in, &offsets[44]);MPI_Get_address(&mess.dtime, &offsets[45]);
-    MPI_Get_address(&mess.Neff, &offsets[46]);
-
-    for(int i=1; i<47; i++){
+    MPI_Get_address(&mess.Neff, &offsets[46]);MPI_Get_address(&mess.u_wall, &offsets[47]);MPI_Get_address(&mess.T_wall, &offsets[48]);
+    for(int i=1; i<49; i++){
         offsets[i] -= offsets[0];
     }
     offsets[0] = 0; 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    MPI_Type_create_struct(47, blockcounts, offsets, datatypes, &datatype);
+    MPI_Type_create_struct(49, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
@@ -260,7 +228,6 @@ bool MessagePassing::commitMyvis(MPI_Datatype &datatype)
     offsets[0] = 0; 
     MPI_Type_create_struct(2, blockcounts, offsets, datatypes, &datatype);
     MPI_Type_commit(&datatype);
-
     return true;
 }
 
@@ -278,7 +245,6 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
         MPI_DOUBLE
     };
     MPI_Aint offsets[7];
-
     offsets[0] = offsetof(particle, p_serial);
     offsets[1] = offsetof(particle, p_rank_serial);
     offsets[2] = offsetof(particle, p_mesh_serial);
@@ -286,7 +252,6 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
     offsets[4] = offsetof(particle, p_location);
     offsets[5] = offsetof(particle, p_Ir);
     offsets[6] = offsetof(particle, dt_left);
-
     MPI_Datatype rawDatatype = MPI_DATATYPE_NULL;
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rawDatatype);
     MPI_Type_create_resized(rawDatatype, 0, (MPI_Aint)sizeof(particle), &datatype);
@@ -298,7 +263,6 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
 bool MessagePassing::commitDtleftPacket(MPI_Datatype &datatype)
 {
     if (!ensureParticleDatatype()) return false;
-
     const int nitems = 4;
     int blocklengths[4] = {1, 1, 1, 1};
     MPI_Datatype types[4] = {
@@ -308,12 +272,10 @@ bool MessagePassing::commitDtleftPacket(MPI_Datatype &datatype)
         MPI_INT
     };
     MPI_Aint offsets[4];
-
     offsets[0] = offsetof(DtleftPacket, p);
     offsets[1] = offsetof(DtleftPacket, gface);
     offsets[2] = offsetof(DtleftPacket, gcell);
     offsets[3] = offsetof(DtleftPacket, tri);
-
     MPI_Datatype rawDatatype = MPI_DATATYPE_NULL;
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rawDatatype);
     MPI_Type_create_resized(rawDatatype, 0, (MPI_Aint)sizeof(DtleftPacket), &datatype);
@@ -340,7 +302,6 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
                                              int tag)
 {
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -348,25 +309,19 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int r = 0; r < nrank; ++r)
         sendCounts[(std::size_t)r] = (int)sendCache[(std::size_t)r].size();
-
     if (MPI_Alltoall(sendCounts.data(), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     if (!ensureParticleDatatype()) return false;
-
     std::vector<MPI_Request> requests;
     requests.reserve((std::size_t)nrank * 2u);
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && recvCounts[(std::size_t)mpi.c_rank] > 0)
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -384,7 +339,6 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
             requests.push_back(req);
         }
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -399,13 +353,11 @@ bool MessagePassing::exchangeParticleVectors(std::vector<std::vector<particle>> 
             requests.push_back(req);
         }
     }
-
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     {
         return false;
     }
-
     return true;
 }
 
@@ -416,7 +368,6 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
                                                     int tag)
 {
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -424,23 +375,19 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<char> peerMask((std::size_t)nrank, 0);
     for (int peer : peerRanks)
     {
         if (peer >= 0 && peer < nrank && peer != mpi.c_rank)
             peerMask[(std::size_t)peer] = 1;
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
         if (!peerMask[(std::size_t)r] && !sendCache[(std::size_t)r].empty())
             return false;
     }
-
     if (!ensureParticleDatatype()) return false;
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int peer : peerRanks)
@@ -448,7 +395,6 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
         if (peer < 0 || peer >= nrank || peer == mpi.c_rank) continue;
         sendCounts[(std::size_t)peer] = (int)sendCache[(std::size_t)peer].size();
     }
-
     const int countTag = tag + 10000;
     std::vector<MPI_Request> countRequests;
     countRequests.reserve(peerRanks.size() * 2u);
@@ -473,10 +419,8 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
     if (!countRequests.empty() &&
         MPI_Waitall((int)countRequests.size(), countRequests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && !sendCache[(std::size_t)mpi.c_rank].empty())
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     std::vector<MPI_Request> requests;
     requests.reserve(peerRanks.size() * 2u);
     for (int peer : peerRanks)
@@ -507,7 +451,6 @@ bool MessagePassing::exchangeParticleVectorsOnPeers(std::vector<std::vector<part
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     return true;
 }
 
@@ -519,7 +462,6 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
 {
     if (hadTraffic != nullptr) *hadTraffic = false;
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -527,17 +469,14 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int r = 0; r < nrank; ++r)
         sendCounts[(std::size_t)r] = (int)sendCache[(std::size_t)r].size();
-
     if (MPI_Alltoall(sendCounts.data(), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     if (hadTraffic != nullptr)
     {
         for (int r = 0; r < nrank; ++r)
@@ -549,15 +488,11 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             }
         }
     }
-
     if (!ensureDtleftPacketDatatype()) return false;
-
     std::vector<MPI_Request> requests;
     requests.reserve((std::size_t)nrank * 2u);
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && recvCounts[(std::size_t)mpi.c_rank] > 0)
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -575,7 +510,6 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             requests.push_back(req);
         }
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
@@ -590,13 +524,11 @@ bool MessagePassing::exchangeDtleftPacketVectors(std::vector<std::vector<DtleftP
             requests.push_back(req);
         }
     }
-
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     {
         return false;
     }
-
     return true;
 }
 
@@ -609,7 +541,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
 {
     if (hadTraffic != nullptr) *hadTraffic = false;
     if (!mpi.active()) return true;
-
     const int nrank = mpi.c_size;
     if ((int)sendCache.size() < nrank)
         sendCache.resize((std::size_t)nrank);
@@ -617,23 +548,19 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
         recvCache.resize((std::size_t)nrank);
     for (int r = 0; r < nrank; ++r)
         recvCache[(std::size_t)r].clear();
-
     std::vector<char> peerMask((std::size_t)nrank, 0);
     for (int peer : peerRanks)
     {
         if (peer >= 0 && peer < nrank && peer != mpi.c_rank)
             peerMask[(std::size_t)peer] = 1;
     }
-
     for (int r = 0; r < nrank; ++r)
     {
         if (r == mpi.c_rank) continue;
         if (!peerMask[(std::size_t)r] && !sendCache[(std::size_t)r].empty())
             return false;
     }
-
     if (!ensureDtleftPacketDatatype()) return false;
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     for (int peer : peerRanks)
@@ -641,7 +568,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
         if (peer < 0 || peer >= nrank || peer == mpi.c_rank) continue;
         sendCounts[(std::size_t)peer] = (int)sendCache[(std::size_t)peer].size();
     }
-
     const int countTag = tag + 10000;
     std::vector<MPI_Request> countRequests;
     countRequests.reserve(peerRanks.size() * 2u);
@@ -666,7 +592,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
     if (!countRequests.empty() &&
         MPI_Waitall((int)countRequests.size(), countRequests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     if (hadTraffic != nullptr)
     {
         if (!sendCache[(std::size_t)mpi.c_rank].empty())
@@ -681,10 +606,8 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
             }
         }
     }
-
     if (mpi.c_rank >= 0 && mpi.c_rank < nrank && !sendCache[(std::size_t)mpi.c_rank].empty())
         recvCache[(std::size_t)mpi.c_rank] = sendCache[(std::size_t)mpi.c_rank];
-
     std::vector<MPI_Request> requests;
     requests.reserve(peerRanks.size() * 2u);
     for (int peer : peerRanks)
@@ -715,7 +638,6 @@ bool MessagePassing::exchangeDtleftPacketVectorsOnPeers(std::vector<std::vector<
     if (!requests.empty() &&
         MPI_Waitall((int)requests.size(), requests.data(), MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     return true;
 }
 bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sendCounts,
@@ -732,11 +654,9 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         recvValues.clear();
         return true;
     }
-
     const int nrank = mpi.c_size;
     if (nrank <= 0 || valueWidth <= 0 || (int)sendCounts.size() != nrank)
         return false;
-
     int expectedSend = 0;
     bool localOk = true;
     for (int c : sendCounts)
@@ -748,29 +668,24 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         expectedSend != (int)sendGids.size() ||
         expectedSend * valueWidth != (int)sendValues.size())
         localOk = false;
-
     int localOkInt = localOk ? 1 : 0;
     std::vector<int> allOk((std::size_t)nrank, 0);
     MPI_Allgather(&localOkInt, 1, MPI_INT, allOk.data(), 1, MPI_INT, mpi.calGroup);
     if (std::find(allOk.begin(), allOk.end(), 0) != allOk.end())
         return false;
-
     std::vector<int> recvCounts((std::size_t)nrank, 0);
     if (MPI_Alltoall(const_cast<int*>(sendCounts.data()), 1, MPI_INT,
                      recvCounts.data(), 1, MPI_INT,
                      mpi.calGroup) != MPI_SUCCESS)
         return false;
-
     std::vector<int> sdispls;
     std::vector<int> rdispls;
     int sendTotal = 0;
     int recvTotal = 0;
     prefixCounts(sendCounts, sdispls, sendTotal);
     prefixCounts(recvCounts, rdispls, recvTotal);
-
     recvGids.assign((std::size_t)recvTotal, 0);
     recvValues.assign((std::size_t)recvTotal * (std::size_t)valueWidth, 0.0);
-
     if (!exchangeFlatPayload(sendGids.empty() ? nullptr : sendGids.data(),
                              sendCounts,
                              sdispls,
@@ -780,7 +695,6 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
                              rdispls,
                              mpi))
         return false;
-
     std::vector<int> sendCountsV((std::size_t)nrank, 0);
     std::vector<int> recvCountsV((std::size_t)nrank, 0);
     std::vector<int> sdisplsV((std::size_t)nrank, 0);
@@ -792,7 +706,6 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
         sdisplsV[(std::size_t)r] = sdispls[(std::size_t)r] * valueWidth;
         rdisplsV[(std::size_t)r] = rdispls[(std::size_t)r] * valueWidth;
     }
-
     if (!exchangeFlatPayload(sendValues.empty() ? nullptr : sendValues.data(),
                              sendCountsV,
                              sdisplsV,
@@ -802,6 +715,5 @@ bool MessagePassing::exchangeFixedWidthDoublePackets(const std::vector<int> &sen
                              rdisplsV,
                              mpi))
         return false;
-
     return true;
 }

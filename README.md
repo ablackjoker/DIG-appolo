@@ -1,5 +1,7 @@
 # DIG-appolo
 
+This branch (`cavity-case`) contains the cavity-case variant derived from the Apollo case. See `docs/changes_from_apollo.md` for the main case changes.
+
 DSMC/NS parallel solver case for the Apollo mesh.
 
 ## Basic Requirements

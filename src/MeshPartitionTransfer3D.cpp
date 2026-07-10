@@ -18,19 +18,16 @@ namespace
     const int kGeomEdgesTag = 4304;
     const int kGeomFaceSplitTag = 4305;
     const int kGeomNodeXyzTag = 4306;
-
     template <typename T>
     inline T *partition3dDataOrNull(std::vector<T> &values)
     {
         return values.empty() ? nullptr : values.data();
     }
-
     template <typename T>
     inline T *partition3dDataOrNull(const std::vector<T> &values)
     {
         return values.empty() ? nullptr : const_cast<T *>(values.data());
     }
-
     inline void prefixSumCounts(const std::vector<int> &counts, std::vector<int> &displs)
     {
         displs.assign(counts.size(), 0);
@@ -50,7 +47,6 @@ MeshPartitionTransfer3D::MeshPartitionTransfer3D(meshImport *mesh,
 bool MeshPartitionTransfer3D::broadcastMeshMessage(meshMessage &mess) const
 {
     if (m_mpass == nullptr || m_mpi == nullptr) return false;
-
     MPI_Datatype mpiMessage = MPI_DATATYPE_NULL;
     if (!m_mpass->commitMyMesssge(mpiMessage)) return false;
     const int rc = MPI_Bcast(&mess, 1, mpiMessage, 0, m_mpi->comm);
@@ -61,32 +57,25 @@ bool MeshPartitionTransfer3D::broadcastMeshMessage(meshMessage &mess) const
 bool MeshPartitionTransfer3D::initialPartitionAndDistribute(int haloRings)
 {
     if (m_partinit == nullptr || m_mpi == nullptr) return false;
-
     m_partinit->rank_cell_all.assign((std::size_t)m_partinit->mess.Ncell, 0);
     bool ok = true;
     if (isRoot())
         ok = initialPartitionRoot(m_partinit->rank_cell_all);
-
     int okInt = ok ? 1 : 0;
     MPI_Bcast(&okInt, 1, MPI_INT, 0, m_mpi->comm);
     if (!okInt) return false;
-
     MPI_Bcast(m_partinit->rank_cell_all.data(), m_partinit->mess.Ncell, MPI_INT, 0, m_mpi->comm);
     m_partinit->partitionState.assign(m_partinit->rank_cell_all, m_mpi->c_size);
-
     if (isRoot() && m_mesh != nullptr)
         m_mesh->rootCaptureGlobalDsmcAndReleaseMesh();
-
     return distributeGeometryByOwners(m_partinit->partitionState, haloRings);
 }
 
 bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D &state, int haloRings)
 {
     if (m_partinit == nullptr || m_mpass == nullptr || m_mpi == nullptr) return false;
-
     m_partinit->partitionState = state;
     m_partinit->rank_cell_all = state.ownerByCell;
-
     MPI_Datatype mpiCell = MPI_DATATYPE_NULL;
     MPI_Datatype mpiEdge = MPI_DATATYPE_NULL;
     if (!m_mpass->commitMyDsmcCell(mpiCell)) return false;
@@ -95,7 +84,6 @@ bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D 
         MPI_Type_free(&mpiCell);
         return false;
     }
-
     bool ok = true;
     if (isRoot())
     {
@@ -105,7 +93,6 @@ bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D 
             MeshPartitionPackage3D package;
             if (ok)
                 ok = buildPackageForRank(calRank, state, rings, package);
-
             if (!ok)
             {
                 MeshPartitionPackage3D failedPackage;
@@ -114,7 +101,6 @@ bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D 
                     break;
                 continue;
             }
-
             if (!sendPackageToWorld(worldFromCal(calRank), package, mpiCell, mpiEdge))
             {
                 ok = false;
@@ -126,10 +112,8 @@ bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D 
     {
         ok = recvPackageFromRoot(mpiCell, mpiEdge);
     }
-
     MPI_Type_free(&mpiCell);
     MPI_Type_free(&mpiEdge);
-
     int failInt = ok ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &failInt, 1, MPI_INT, MPI_LOR, m_mpi->comm);
     MPI_Barrier(m_mpi->comm);
@@ -140,7 +124,6 @@ LocalGeometry3D MeshPartitionTransfer3D::takeLocalGeometry()
 {
     LocalGeometry3D geometry;
     if (m_partinit == nullptr) return geometry;
-
     geometry.ownedCount = m_partinit->my_owned_ncell;
     geometry.cells = std::move(m_partinit->cells);
     geometry.edges = std::move(m_partinit->edges);
@@ -163,7 +146,6 @@ bool MeshPartitionTransfer3D::installLocalGeometryTo(ProcessDSMC &process)
 bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &npcByCell) const
 {
     if (m_partinit == nullptr || m_mpi == nullptr) return false;
-
     npcByCell.assign((std::size_t)m_partinit->mess.Ncell, 0);
     if (isRoot())
     {
@@ -171,7 +153,6 @@ bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &n
         for (int i = 0; i < m_partinit->mess.Ncell; ++i)
             npcByCell[(std::size_t)i] = m_mesh->Npc_exa[i];
     }
-
     return MPI_Bcast(npcByCell.data(), m_partinit->mess.Ncell, MPI_INT, 0, m_mpi->comm) == MPI_SUCCESS;
 }
 
@@ -188,14 +169,11 @@ int MeshPartitionTransfer3D::worldFromCal(int calRank) const
 bool MeshPartitionTransfer3D::initialPartitionRoot(std::vector<int> &rankCellAll) const
 {
     if (m_mesh == nullptr || m_partinit == nullptr || m_mpi == nullptr) return false;
-
     restoreOriginalMesh();
     m_mesh->metisPartition((idx_t)m_mpi->c_size);
-
     rankCellAll.assign((std::size_t)m_partinit->mess.Ncell, 0);
     for (int i = 0; i < m_partinit->mess.Ncell; ++i)
         rankCellAll[(std::size_t)i] = m_mesh->cells[i].no;
-
     syncDsmcCellOwners(rankCellAll);
     return true;
 }
@@ -211,14 +189,12 @@ void MeshPartitionTransfer3D::syncDsmcCellOwners(const std::vector<int> &rankCel
 void MeshPartitionTransfer3D::restoreOriginalMesh() const
 {
     if (m_mesh == nullptr || m_partinit == nullptr) return;
-
     if ((int)m_mesh->originalCells.size() >= m_partinit->mess.Ncell)
     {
         for (int i = 0; i < m_partinit->mess.Ncell; ++i)
             m_mesh->cells[i] = m_mesh->originalCells[(std::size_t)i];
         std::vector<cell>().swap(m_mesh->originalCells);
     }
-
     if ((int)m_mesh->originalEdges.size() >= m_partinit->mess.Nface)
     {
         for (int i = 0; i < m_partinit->mess.Nface; ++i)
@@ -244,7 +220,6 @@ void MeshPartitionTransfer3D::appendPackageToRootBuffers(int worldRank,
     buffers.ownedCounts[(std::size_t)worldRank] = package.ownedCellCount;
     buffers.faceCounts[(std::size_t)worldRank] = (int)package.edges.size();
     buffers.xyzCounts[(std::size_t)worldRank] = (int)package.nodeXyz.size();
-
     buffers.cellGids.insert(buffers.cellGids.end(), package.cellGids.begin(), package.cellGids.end());
     buffers.cells.insert(buffers.cells.end(), package.cells.begin(), package.cells.end());
     buffers.faceGids.insert(buffers.faceGids.end(), package.faceGids.begin(), package.faceGids.end());
@@ -261,7 +236,6 @@ void MeshPartitionTransfer3D::resizeLocalGeometryStorage(int myNcell,
     m_partinit->my_ncell = myNcell;
     m_partinit->my_nface = myNface;
     m_partinit->my_owned_ncell = myOwnedNcell;
-
     m_partinit->cells.assign((std::size_t)myNcell, DsmcCell());
     m_partinit->edges.assign((std::size_t)myNface, DsmcEdge());
     m_partinit->localPointXY.assign((std::size_t)myNxyz, 0.0);
@@ -274,7 +248,6 @@ bool MeshPartitionTransfer3D::installPackageLocal(const MeshPartitionPackage3D &
 {
     if (m_partinit == nullptr) return false;
     if (package.ownedCellCount < 0) return false;
-
     resizeLocalGeometryStorage((int)package.cells.size(),
                                package.ownedCellCount,
                                (int)package.edges.size(),
@@ -302,7 +275,6 @@ bool MeshPartitionTransfer3D::sendPackageToWorld(int worldRank,
         counts.nface = (int)package.edges.size();
         counts.nxyz = (int)package.nodeXyz.size();
     }
-
     int header[4] = {
         counts.ownedCellCount,
         counts.ncell,
@@ -315,7 +287,6 @@ bool MeshPartitionTransfer3D::sendPackageToWorld(int worldRank,
     if (MPI_Waitall(1, &req, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
     if (counts.ownedCellCount < 0) return true;
-
     if (counts.ncell > 0)
     {
         if (MPI_Isend(partition3dDataOrNull(package.cellGids), counts.ncell, MPI_INT,
@@ -367,16 +338,13 @@ bool MeshPartitionTransfer3D::recvPackageFromRoot(MPI_Datatype mpiCell,
         return false;
     if (MPI_Waitall(1, &req, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
         return false;
-
     LocalGeometryCounts3D counts;
     counts.ownedCellCount = header[0];
     counts.ncell = header[1];
     counts.nface = header[2];
     counts.nxyz = header[3];
     if (counts.ownedCellCount < 0) return false;
-
     resizeLocalGeometryStorage(counts.ncell, counts.ownedCellCount, counts.nface, counts.nxyz);
-
     if (counts.ncell > 0)
     {
         if (MPI_Irecv(partition3dDataOrNull(m_partinit->local_cells), counts.ncell, MPI_INT,
@@ -416,7 +384,6 @@ bool MeshPartitionTransfer3D::recvPackageFromRoot(MPI_Datatype mpiCell,
         if (MPI_Waitall(1, &req, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
             return false;
     }
-
     rebuildInitialMaps();
     return true;
 }
@@ -428,18 +395,15 @@ bool MeshPartitionTransfer3D::buildRootBuffers(const PartitionState3D &state,
     initializeCounts(buffers);
     if (!isRoot()) return true;
     if (m_mesh == nullptr || m_partinit == nullptr) return false;
-
     const int rings = std::max(0, haloRings);
     for (int calRank = 0; calRank < m_mpi->c_size; ++calRank)
     {
         MeshPartitionPackage3D package;
         if (!buildPackageForRank(calRank, state, rings, package))
             return false;
-
         const int worldRank = worldFromCal(calRank);
         appendPackageToRootBuffers(worldRank, package, buffers);
     }
-
     prefixSumCounts(buffers.cellCounts, buffers.cellDispls);
     prefixSumCounts(buffers.faceCounts, buffers.faceDispls);
     prefixSumCounts(buffers.xyzCounts, buffers.xyzDispls);
@@ -453,10 +417,8 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
 {
     HaloBuildResult result;
     if (m_mesh == nullptr) return result;
-
     const int ncell = (int)m_mesh->Dsmccells.size();
     if ((int)state.ownerByCell.size() < ncell) return result;
-
     if ((int)m_cellVisitStamp.size() < ncell)
         m_cellVisitStamp.assign((std::size_t)ncell, 0);
     if (m_cellVisitEpoch >= INT_MAX)
@@ -479,10 +441,8 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
         if (gid >= 0 && gid < ncell)
             m_cellVisitStamp[(std::size_t)gid] = visitEpoch;
     };
-
     std::vector<int> frontier;
     frontier.reserve((std::size_t)ncell / 4u + 16u);
-
     if (calRank >= 0 && calRank < (int)state.cellsByRank.size())
     {
         const std::vector<int> &ownedSeed = state.cellsByRank[(std::size_t)calRank];
@@ -508,9 +468,7 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
             }
         }
     }
-
     result.ownedCount = (int)result.ownedCellGids.size();
-
     std::vector<int> next;
     next.reserve(frontier.size());
     for (int ring = 0; ring < haloRings; ++ring)
@@ -524,10 +482,8 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
                 const int neighbor = cell.cell2cell[k];
                 if (neighbor < 0 || neighbor >= ncell) continue;
                 if (visited(neighbor)) continue;
-
                 markVisited(neighbor);
                 next.push_back(neighbor);
-
                 if (state.ownerByCell[(std::size_t)neighbor] != calRank)
                 {
                     result.haloCellGids.push_back(neighbor);
@@ -535,11 +491,9 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
                 }
             }
         }
-
         frontier.swap(next);
         if (frontier.empty()) break;
     }
-
     result.allCellGids.reserve(result.ownedCellGids.size() + result.haloCellGids.size());
     result.allCellLayers.reserve(result.ownedCellLayers.size() + result.haloCellLayers.size());
     result.allCellGids.insert(result.allCellGids.end(), result.ownedCellGids.begin(), result.ownedCellGids.end());
@@ -556,14 +510,11 @@ bool MeshPartitionTransfer3D::buildPackageForRank(int calRank,
 {
     package = MeshPartitionPackage3D();
     if (m_mesh == nullptr || m_partinit == nullptr) return false;
-
     const HaloBuildResult halo = buildOwnedHaloCells(calRank, state, haloRings);
-
     if (kReportHaloAdjacency &&
         haloRings > 0 &&
         halo.allCellLayers.size() == halo.allCellGids.size())
         reportHaloAdjacencyMisses(calRank, state, haloRings, halo);
-
     if (!fillPackageCells(halo, package))
         return false;
     if (!fillPackageFaces(package))
@@ -604,7 +555,6 @@ bool MeshPartitionTransfer3D::fillPackageFaces(MeshPartitionPackage3D &package) 
         ++m_faceVisitEpoch;
     }
     const int faceEpoch = m_faceVisitEpoch;
-
     package.faceGids.reserve(package.cellGids.size() * 8u);
     for (DsmcCell &cell : package.cells)
     {
@@ -622,14 +572,12 @@ bool MeshPartitionTransfer3D::fillPackageFaces(MeshPartitionPackage3D &package) 
             }
         }
     }
-
     for (int lf = 0; lf < (int)package.faceGids.size(); ++lf)
     {
         const int gfid = package.faceGids[(std::size_t)lf];
         m_faceVisitStamp[(std::size_t)gfid] = faceEpoch;
         m_faceLocalMap[(std::size_t)gfid] = lf;
     }
-
     for (DsmcCell &cell : package.cells)
     {
         for (int j = 0; j < cell.num && j < NN; ++j)
@@ -642,7 +590,6 @@ bool MeshPartitionTransfer3D::fillPackageFaces(MeshPartitionPackage3D &package) 
                 cell.cell2face[j] = m_faceLocalMap[(std::size_t)fid];
         }
     }
-
     package.edges.resize(package.faceGids.size());
     package.faceSplitTags.resize(package.faceGids.size(), meshImport::FACE_SPLIT_INVALID);
     for (int lf = 0; lf < (int)package.faceGids.size(); ++lf)
@@ -674,7 +621,6 @@ bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) 
         ++m_nodeVisitEpoch;
     }
     const int nodeEpoch = m_nodeVisitEpoch;
-
     package.nodeGids.reserve(package.edges.size() * 4u);
     for (const auto &edge : package.edges)
     {
@@ -691,14 +637,12 @@ bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) 
             }
         }
     }
-
     for (int ln = 0; ln < (int)package.nodeGids.size(); ++ln)
     {
         const int ngid = package.nodeGids[(std::size_t)ln];
         m_nodeVisitStamp[(std::size_t)ngid] = nodeEpoch;
         m_nodeLocalMap[(std::size_t)ngid] = ln;
     }
-
     for (auto &edge : package.edges)
     {
         const int nfaceNode = edge.faceType;
@@ -711,7 +655,6 @@ bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) 
                 edge.faceMap[k] = m_nodeLocalMap[(std::size_t)ngid];
         }
     }
-
     package.nodeXyz.resize(3u * package.nodeGids.size());
     for (std::size_t ln = 0; ln < package.nodeGids.size(); ++ln)
     {
@@ -721,7 +664,6 @@ bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) 
         package.nodeXyz[3u * ln + 1u] = m_mesh->localPointXY[(std::size_t)(3 * gid + 1)];
         package.nodeXyz[3u * ln + 2u] = m_mesh->localPointXY[(std::size_t)(3 * gid + 2)];
     }
-
     return true;
 }
 
@@ -731,12 +673,10 @@ void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
                                                         const HaloBuildResult &halo) const
 {
     if (m_mesh == nullptr) return;
-
     std::unordered_map<int, int> localLayer;
     localLayer.reserve(halo.allCellGids.size() * 2u + 1u);
     for (std::size_t idx = 0; idx < halo.allCellGids.size(); ++idx)
         localLayer[halo.allCellGids[idx]] = halo.allCellLayers[idx];
-
     int missCount = 0;
     int firstCell = -1;
     int firstLayer = -1;
@@ -746,21 +686,18 @@ void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
     int firstFaceL = -1;
     int firstFaceR = -1;
     int firstFaceTag = -1;
-
     for (std::size_t idx = 0; idx < halo.allCellGids.size(); ++idx)
     {
         const int gid = halo.allCellGids[idx];
         const int layer = halo.allCellLayers[idx];
         if (layer < 0 || layer >= haloRings) continue;
         if (gid < 0 || gid >= (int)m_mesh->Dsmccells.size()) continue;
-
         const DsmcCell &cell = m_mesh->Dsmccells[(std::size_t)gid];
         for (int j = 0; j < cell.num && j < NN; ++j)
         {
             const int fid = cell.cell2face[j];
             if (fid < 0) break;
             if (fid >= (int)m_mesh->Dsmcedges.size()) continue;
-
             const DsmcEdge &face = m_mesh->Dsmcedges[(std::size_t)fid];
             const int g0 = face.faceMap[4];
             const int g1 = face.faceMap[5];
@@ -768,14 +705,11 @@ void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
                 g0 >= (int)m_mesh->Dsmccells.size() ||
                 g1 >= (int)m_mesh->Dsmccells.size())
                 continue;
-
             int neighbor = -1;
             if (gid == g0) neighbor = g1;
             else if (gid == g1) neighbor = g0;
             else continue;
-
             if (localLayer.find(neighbor) != localLayer.end()) continue;
-
             ++missCount;
             if (firstCell < 0)
             {
@@ -790,7 +724,6 @@ void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
             }
         }
     }
-
     if (missCount > 0)
     {
         std::cout << "HALO_ADJ_MISS"
@@ -904,7 +837,6 @@ void MeshPartitionTransfer3D::rebuildInitialMaps() const
         if (gid >= 0 && gid < m_partinit->mess.Ncell)
             m_partinit->gid2local[gid] = lc;
     }
-
     m_partinit->face_gid2local.clear();
     m_partinit->face_gid2local.reserve(m_partinit->face_gids.size());
     for (int lf = 0; lf < (int)m_partinit->face_gids.size(); ++lf)

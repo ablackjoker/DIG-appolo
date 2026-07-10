@@ -17,30 +17,25 @@ namespace
     const int kFieldWidth = 77;
     constexpr int kMigrationHaloRings = 3;
     constexpr double kDynamicRepartitionImbalanceThreshold = 1.10;
-
     int legacyCellLoadWeight(const ProcessDSMC* process, int globalCell)
     {
         if (process == nullptr || globalCell < 0)
             return 0;
-
         int pnum = process->particleCount(globalCell);
         if (pnum == 0)
             pnum = 1;
         return pnum;
     }
-
     struct ConstFieldDesc
     {
         const std::vector<double>* values;
         int stride;
     };
-
     struct FieldDesc
     {
         std::vector<double>* values;
         int stride;
     };
-
     int packetWidth(const std::vector<ConstFieldDesc>& fields)
     {
         int width = 0;
@@ -48,7 +43,6 @@ namespace
             width += std::max(0, f.stride);
         return width;
     }
-
     int packetWidth(const std::vector<FieldDesc>& fields)
     {
         int width = 0;
@@ -56,51 +50,42 @@ namespace
             width += std::max(0, f.stride);
         return width;
     }
-
     inline double readScalar(const std::vector<double> &v, int i)
     {
         return (i >= 0 && i < (int)v.size()) ? v[(std::size_t)i] : 0.0;
     }
-
     inline double readStride(const std::vector<double> &v, int i, int stride, int k)
     {
         const std::size_t pos = (std::size_t)i * (std::size_t)stride + (std::size_t)k;
         return (pos < v.size()) ? v[pos] : 0.0;
     }
-
     inline void writeScalar(std::vector<double> &v, int i, double value)
     {
         if (i >= 0 && i < (int)v.size()) v[(std::size_t)i] = value;
     }
-
     inline void writeStride(std::vector<double> &v, int i, int stride, int k, double value)
     {
         const std::size_t pos = (std::size_t)i * (std::size_t)stride + (std::size_t)k;
         if (pos < v.size()) v[pos] = value;
     }
-
     inline void packScalar(const std::vector<double> &src, int i, std::vector<double> &dst, std::size_t base, int &pos)
     {
         dst[base + (std::size_t)pos++] = readScalar(src, i);
     }
-
     inline void packStride(const std::vector<double> &src, int i, int stride, std::vector<double> &dst, std::size_t base, int &pos)
     {
         for (int k = 0; k < stride; ++k)
             dst[base + (std::size_t)pos++] = readStride(src, i, stride, k);
     }
-
     inline void unpackScalar(std::vector<double> &dst, int i, const std::vector<double> &src, std::size_t base, int &pos)
     {
         writeScalar(dst, i, src[base + (std::size_t)pos++]);
     }
-
     inline void unpackStride(std::vector<double> &dst, int i, int stride, const std::vector<double> &src, std::size_t base, int &pos)
     {
         for (int k = 0; k < stride; ++k)
             writeStride(dst, i, stride, k, src[base + (std::size_t)pos++]);
     }
-
     void packFields(const std::vector<ConstFieldDesc>& fields,
                     int srcCell,
                     std::vector<double>& dst,
@@ -116,7 +101,6 @@ namespace
                 packStride(*f.values, srcCell, f.stride, dst, base, pos);
         }
     }
-
     void unpackFields(const std::vector<FieldDesc>& fields,
                       int dstCell,
                       const std::vector<double>& src,
@@ -132,7 +116,6 @@ namespace
                 unpackStride(*f.values, dstCell, f.stride, src, base, pos);
         }
     }
-
     void copyFieldValues(const std::vector<ConstFieldDesc>& srcFields,
                          int srcCell,
                          const std::vector<FieldDesc>& dstFields,
@@ -145,7 +128,6 @@ namespace
             const FieldDesc& dst = dstFields[idx];
             if (src.values == nullptr || dst.values == nullptr) continue;
             if (src.stride <= 0 || dst.stride <= 0) continue;
-
             const int stride = std::min(src.stride, dst.stride);
             if (stride == 1)
             {
@@ -194,7 +176,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
             return MPI_Wtime();
         return 0.0;
     };
-
     double stagePlan = 0.0;
     double stageParticleMigrate = 0.0;
     double stageGeometryDistribute = 0.0;
@@ -203,7 +184,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
     const double totalBegin = nowSeconds();
     const std::vector<int> previousOwners =
         (this->DSMCprocess != nullptr) ? this->DSMCprocess->rank_cell_all : std::vector<int>();
-
     const auto reportStageTimes = [&](const char* status, int partitionChangedFlag)
     {
         double stageLocal[6] = {
@@ -216,7 +196,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
         };
         double stageMax[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         double stageSum[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
         if (this->comm != MPI_COMM_NULL)
         {
             MPI_Reduce(stageLocal, stageMax, 6, MPI_DOUBLE, MPI_MAX, 0, this->comm);
@@ -230,10 +209,8 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
                 stageSum[i] = stageLocal[i];
             }
         }
-
         const bool isRoot = (this->mpi == nullptr) ? true : this->mpi->root();
         if (!isRoot) return;
-
         const double denom = (this->size > 0) ? (double)this->size : 1.0;
         cout << "DYNAMIC_REPARTITION_TIMING_MAX"
              << " status=" << status
@@ -256,11 +233,9 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
              << " total=" << (stageSum[5] / denom)
              << endl;
     };
-
     const double planBegin = nowSeconds();
     vector<int> cellLoad(this->mess.Ncell, 0);
     compute_cell_load_local(cellLoad);
-
     int skipBalanced = 0;
     if (this->mpi != nullptr && this->mpi->root())
     {
@@ -276,7 +251,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
             if (owner < 0 || owner >= this->c_size) continue;
             rankLoad[(std::size_t)owner] += std::max(0, cellLoad[(std::size_t)c]);
         }
-
         long long totalLoad = 0;
         long long maxLoad = 0;
         for (long long load : rankLoad)
@@ -284,23 +258,19 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
             totalLoad += load;
             if (load > maxLoad) maxLoad = load;
         }
-
         const double avgLoad = (this->c_size > 0) ? (double)totalLoad / (double)this->c_size : 0.0;
         const double imbalance = (avgLoad > 0.0) ? (double)maxLoad / avgLoad : 1.0;
         if (imbalance <= kDynamicRepartitionImbalanceThreshold)
             skipBalanced = 1;
     }
-
     if (this->comm != MPI_COMM_NULL)
         MPI_Bcast(&skipBalanced, 1, MPI_INT, 0, this->comm);
-
     if (skipBalanced != 0)
     {
         stagePlan = nowSeconds() - planBegin;
         reportStageTimes("skip_balanced", 0);
         return;
     }
-
     if (!planRepartitionByLoad(nParts, cellLoad))
     {
         stagePlan = nowSeconds() - planBegin;
@@ -313,7 +283,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
         return;
     }
     stagePlan = nowSeconds() - planBegin;
-
     int partitionChanged = 1;
     if (this->DSMCprocess != nullptr)
     {
@@ -331,13 +300,11 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
             }
         }
     }
-
     if (partitionChanged == 0)
     {
         reportStageTimes("skip_unchanged", 0);
         return;
     }
-
     const double particleBegin = nowSeconds();
     if (this->mpi->active())
     {
@@ -352,7 +319,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
                 this->DSMCprocess->old_local_cell.push_back(gid);
         }
     }
-
     if (!migrateParticlesByOwner())
     {
         stageParticleMigrate = nowSeconds() - particleBegin;
@@ -362,7 +328,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
         return;
     }
     stageParticleMigrate = nowSeconds() - particleBegin;
-
     const double geometryBegin = nowSeconds();
     MeshPartitionTransfer3D transfer(this->mesh, this->partinit, this->mpass, *this->mpi);
     if (!transfer.distributeGeometryByOwners(this->DSMCprocess->partitionState,
@@ -374,7 +339,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
              << " rank=" << this->rank << endl;
         return;
     }
-
     if (this->DSMCprocess == nullptr || !transfer.installLocalGeometryTo(*this->DSMCprocess))
     {
         stageGeometryDistribute = nowSeconds() - geometryBegin;
@@ -384,7 +348,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
         return;
     }
     stageGeometryDistribute = nowSeconds() - geometryBegin;
-
     const double fieldBegin = nowSeconds();
     if (!migrateCellFieldsPacket())
     {
@@ -395,7 +358,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
         return;
     }
     stageFieldMigrate = nowSeconds() - fieldBegin;
-
     const double rebuildBegin = nowSeconds();
     if (!rebuildParticleChainsAfterRepartition(this->repartitionParticles))
     {
@@ -405,7 +367,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
              << " rank=" << this->rank << endl;
         return;
     }
-
     rebuildDsmcAfterRepartition();
     average_load_calculate();
     stageRebuild = nowSeconds() - rebuildBegin;
@@ -416,15 +377,12 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                                         const std::vector<int>& cellLoadGlobal)
 {
     if (this->mpi == nullptr || this->DSMCprocess == nullptr) return false;
-
     if ((int)this->DSMCprocess->rank_cell_all.size() != this->DSMCprocess->mess.Ncell)
         this->DSMCprocess->rank_cell_all.assign((std::size_t)this->DSMCprocess->mess.Ncell, 0);
-
     PartitionState3D previousState;
     previousState.assign(this->DSMCprocess->rank_cell_all,
                          this->mpi->c_size,
                          this->DSMCprocess->partitionState.epoch);
-
     const int ncell = this->DSMCprocess->mess.Ncell;
     const std::size_t edgeFluxSlots = (std::size_t)ncell * (std::size_t)NN;
     int localHasFluxWeights = 0;
@@ -440,7 +398,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
             }
         }
     }
-
     int globalHasFluxWeights = 0;
     MPI_Allreduce(&localHasFluxWeights,
                   &globalHasFluxWeights,
@@ -448,7 +405,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                   MPI_INT,
                   MPI_LOR,
                   this->mpi->comm);
-
     std::vector<int> edgeFluxGlobal;
     if (globalHasFluxWeights != 0 && edgeFluxSlots <= (std::size_t)INT_MAX)
     {
@@ -462,7 +418,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                     edgeFluxLocal[item.first] = item.second;
             }
         }
-
         if (this->mpi->root())
         {
             edgeFluxGlobal.assign(edgeFluxSlots, 0);
@@ -485,7 +440,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                        this->mpi->comm);
         }
     }
-
     bool ok = true;
     if (this->mpi->root())
     {
@@ -506,7 +460,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                 std::vector<int> edgeCell;
                 std::vector<int> edgeSlot;
                 buildLineGraph(xadj, adjncy, &edgeCell, &edgeSlot);
-
                 idx_t nvtxs = this->DSMCprocess->mess.Ncell;
                 idx_t ncon = 1;
                 std::vector<idx_t> weights((std::size_t)this->DSMCprocess->mess.Ncell, 1);
@@ -516,7 +469,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                     if (w <= 0) w = 1;
                     weights[(std::size_t)c] = (idx_t)w;
                 }
-
                 std::vector<idx_t> adjwgt;
                 bool useFluxWeights = (!edgeFluxGlobal.empty() &&
                                        edgeCell.size() == adjncy.size() &&
@@ -529,12 +481,10 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                         const int oldCell = edgeCell[pos];
                         const int slot = edgeSlot[pos];
                         const int adjOld = (int)adjncy[pos];
-
                         int w1 = 0;
                         const std::size_t idx1 = (std::size_t)oldCell * (std::size_t)NN + (std::size_t)slot;
                         if (oldCell >= 0 && slot >= 0 && idx1 < edgeFluxGlobal.size())
                             w1 = edgeFluxGlobal[idx1];
-
                         int w2 = 0;
                         if (adjOld >= 0 &&
                             adjOld < this->DSMCprocess->mess.Ncell &&
@@ -553,7 +503,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                                 }
                             }
                         }
-
                         long long wsum = (long long)w1 + (long long)w2;
                         if (wsum <= 0) wsum = 1;
                         const long long wmax = (long long)std::numeric_limits<idx_t>::max();
@@ -561,7 +510,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                         adjwgt[pos] = (idx_t)wsum;
                     }
                 }
-
                 std::vector<idx_t> part((std::size_t)this->DSMCprocess->mess.Ncell, 0);
                 idx_t objval = 0;
                 idx_t options[METIS_NOPTIONS];
@@ -572,7 +520,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                 options[METIS_OPTION_CONTIG] = 1;
                 options[METIS_OPTION_CCORDER] = 1;
                 options[METIS_OPTION_SEED] = 1;
-
                 const int ret = METIS_PartGraphRecursive(&nvtxs, &ncon,
                                                          xadj.data(), adjncy.data(),
                                                          weights.data(), NULL,
@@ -596,7 +543,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                             oldRank >= 0 && oldRank < (int)nParts)
                             matchData[(std::size_t)newRank][(std::size_t)oldRank] += 1;
                     }
-
                     const std::vector<std::vector<int>> assignments = matchPartitions(matchData);
                     std::vector<int> remapNewToOld((std::size_t)nParts, 0);
                     for (int r = 0; r < (int)nParts; ++r)
@@ -610,14 +556,12 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                             oldRank >= 0 && oldRank < (int)nParts)
                             remapNewToOld[(std::size_t)newRank] = oldRank;
                     }
-
                     for (int c = 0; c < this->DSMCprocess->mess.Ncell; ++c)
                     {
                         const int newRank = (int)part[(std::size_t)c];
                         if (newRank >= 0 && newRank < (int)nParts)
                             part[(std::size_t)c] = (idx_t)remapNewToOld[(std::size_t)newRank];
                     }
-
                     this->DSMCprocess->rank_cell_all.assign((std::size_t)this->DSMCprocess->mess.Ncell, 0);
                     for (int i = 0; i < this->DSMCprocess->mess.Ncell; ++i)
                         this->DSMCprocess->rank_cell_all[(std::size_t)i] = (int)part[(std::size_t)i];
@@ -626,11 +570,9 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
             }
         }
     }
-
     int okInt = ok ? 1 : 0;
     MPI_Bcast(&okInt, 1, MPI_INT, 0, this->mpi->comm);
     if (!okInt) return false;
-
     MPI_Bcast(this->DSMCprocess->rank_cell_all.data(),
               this->DSMCprocess->mess.Ncell,
               MPI_INT,
@@ -648,7 +590,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
 void dynamicDSMC::syncDsmcCellOwners()
 {
     if (this->mesh == nullptr || this->DSMCprocess == nullptr) return;
-
     const int n = std::min((int)this->mesh->Dsmccells.size(),
                            (int)this->DSMCprocess->rank_cell_all.size());
     for (int i = 0; i < n; ++i)
@@ -668,7 +609,6 @@ void dynamicDSMC::buildLineGraph(std::vector<idx_t>& xadj,
         if (edgeSlot != nullptr) *edgeSlot = cachedLineGraphEdgeSlot;
         return;
     }
-
     int edgeCount = 0;
     for (int i = 0; i < this->DSMCprocess->mess.Ncell; ++i)
     {
@@ -682,12 +622,10 @@ void dynamicDSMC::buildLineGraph(std::vector<idx_t>& xadj,
             ++edgeCount;
         }
     }
-
     xadj.assign((std::size_t)this->DSMCprocess->mess.Ncell + 1u, 0);
     adjncy.assign((std::size_t)edgeCount, 0);
     std::vector<int> builtEdgeCell((std::size_t)edgeCount, -1);
     std::vector<int> builtEdgeSlot((std::size_t)edgeCount, -1);
-
     int cursor = 0;
     for (int i = 0; i < this->DSMCprocess->mess.Ncell; ++i)
     {
@@ -704,7 +642,6 @@ void dynamicDSMC::buildLineGraph(std::vector<idx_t>& xadj,
         }
         xadj[(std::size_t)i + 1u] = cursor;
     }
-
     cachedLineGraphXadj = xadj;
     cachedLineGraphAdjncy = adjncy;
     cachedLineGraphEdgeCell = builtEdgeCell;
@@ -756,17 +693,14 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
     this->fa.assign((std::size_t)(nx + ny), -1);
     this->visx.assign((std::size_t)n, false);
     this->visy.assign((std::size_t)n, false);
-
     for (int x = 0; x < n; ++x)
         this->lx[(std::size_t)x] = graph[(std::size_t)x].empty() ? 0 : *std::max_element(graph[(std::size_t)x].begin(), graph[(std::size_t)x].end());
-
     for (int x = 0; x < nx; ++x)
     {
         std::fill(this->slack.begin(), this->slack.end(), INT_MAX);
         std::fill(this->fa.begin(), this->fa.end(), -1);
         std::fill(this->visx.begin(), this->visx.end(), false);
         std::fill(this->visy.begin(), this->visy.end(), false);
-
         int first = 1;
         int leaf = -1;
         int totalTimes = 0;
@@ -790,7 +724,6 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
                     }
                 }
             }
-
             if (leaf > 0)
             {
                 int p = leaf;
@@ -801,14 +734,12 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
                 }
                 break;
             }
-
             int delta = INT_MAX;
             for (int i = 0; i < nx; ++i)
             {
                 if (this->visx[(std::size_t)i] && delta > this->slack[(std::size_t)i])
                     delta = this->slack[(std::size_t)i];
             }
-
             for (int i = 0; i < nx; ++i)
             {
                 if (this->visx[(std::size_t)i])
@@ -822,7 +753,6 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
                 if (this->visy[(std::size_t)j])
                     this->ly[(std::size_t)j] += delta;
             }
-
             if (totalTimes > 10000)
             {
                 cout << "KM is error" << endl;
@@ -830,7 +760,6 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
             }
         }
     }
-
     std::vector<std::vector<int>> result;
     for (int y = 0; y < n; ++y)
     {
@@ -851,20 +780,16 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
 bool dynamicDSMC::migrateParticlesByOwner()
 {
     this->repartitionParticles.clear();
-
     if (this->mpi == nullptr || !this->mpi->active()) return true;
     if (this->mpass == nullptr || this->partinit == nullptr || this->DSMCprocess == nullptr) return false;
-
     const int nrank = this->mpi->c_size;
     std::vector<std::vector<particle>> sendBins((std::size_t)nrank);
     std::vector<std::vector<particle>> recvBins;
     std::vector<int> sendParticleCounts((std::size_t)nrank, 0);
     int retainedParticleCount = 0;
-
     for (int gid : this->DSMCprocess->old_local_cell)
     {
         if (gid < 0 || gid >= this->mess.Ncell) continue;
-
         const int dest = this->DSMCprocess->ownerOfGlobalCell(gid);
         if (dest < 0 || dest >= nrank)
         {
@@ -873,28 +798,23 @@ bool dynamicDSMC::migrateParticlesByOwner()
                  << " owner=" << dest << endl;
             return false;
         }
-
         const int bucketSize = (int)this->DSMCprocess->currParticles(gid).size();
         if (dest == this->mpi->c_rank)
             retainedParticleCount += bucketSize;
         else
             sendParticleCounts[(std::size_t)dest] += bucketSize;
     }
-
     if (retainedParticleCount > 0)
         this->repartitionParticles.reserve((std::size_t)retainedParticleCount);
     for (int r = 0; r < nrank; ++r)
         if (sendParticleCounts[(std::size_t)r] > 0)
             sendBins[(std::size_t)r].reserve((std::size_t)sendParticleCounts[(std::size_t)r]);
-
     for (int gid : this->DSMCprocess->old_local_cell)
     {
         if (gid < 0 || gid >= this->mess.Ncell) continue;
-
         const int dest = this->DSMCprocess->ownerOfGlobalCell(gid);
         if (dest < 0 || dest >= nrank)
             return false;
-
         ParticleBucketSoA& bucket = this->DSMCprocess->currParticles(gid);
         const std::size_t bucketSize = bucket.size();
         for (std::size_t i = 0; i < bucketSize; ++i)
@@ -907,7 +827,6 @@ bool dynamicDSMC::migrateParticlesByOwner()
             else
                 sendBins[(std::size_t)dest].push_back(p);
         }
-
         if (gid >= 0 && gid < (int)this->partinit->cell_particle_reserve_hint.size())
         {
             this->partinit->cell_particle_reserve_hint[(std::size_t)gid] =
@@ -916,10 +835,8 @@ bool dynamicDSMC::migrateParticlesByOwner()
         }
         bucket.clear();
     }
-
     if (!this->mpass->exchangeParticleVectors(sendBins, recvBins, *this->mpi, 3101))
         return false;
-
     std::size_t recvTotal = 0;
     for (int r = 0; r < nrank; ++r)
         recvTotal += recvBins[(std::size_t)r].size();
@@ -935,7 +852,6 @@ bool dynamicDSMC::migrateCellFieldsPacket()
 {
     if (this->mpi == nullptr || !this->mpi->active()) return true;
     if (this->partinit == nullptr || this->DSMCprocess == nullptr) return false;
-
     const int nrank = this->mpi->c_size;
     const std::vector<int> &oldGids = this->DSMCprocess->old_local_cell;
     std::vector<double> sparseStateField((std::size_t)oldGids.size(), 0.0);
@@ -987,30 +903,24 @@ bool dynamicDSMC::migrateCellFieldsPacket()
              << " expected=" << kFieldWidth << endl;
         return false;
     }
-
     const int nnew = this->DSMCprocess->iNcell;
     std::vector<double> crmaxNew((std::size_t)nnew, 0.0);
     std::vector<double> remColNew((std::size_t)nnew, 0.0);
     std::vector<double> remPreNew((std::size_t)nnew, 0.0);
-
     std::vector<double> steadyRhoNew((std::size_t)nnew, 0.0), stepRhoNew((std::size_t)nnew, 0.0);
     std::vector<double> stepInterRhoNew((std::size_t)nnew, 0.0), stepSumRhoNew((std::size_t)nnew, 0.0);
     std::vector<double> steadyTNew((std::size_t)nnew, 0.0), stepTNew((std::size_t)nnew, 0.0);
     std::vector<double> stepInterTNew((std::size_t)nnew, 0.0), stepSumTNew((std::size_t)nnew, 0.0);
-
     std::vector<double> steadyUNew((std::size_t)nnew * 3u, 0.0), stepUNew((std::size_t)nnew * 3u, 0.0);
     std::vector<double> stepInterUNew((std::size_t)nnew * 3u, 0.0), stepSumUNew((std::size_t)nnew * 3u, 0.0);
     std::vector<double> steadyQNew((std::size_t)nnew * 3u, 0.0), stepQNew((std::size_t)nnew * 3u, 0.0);
     std::vector<double> stepInterQNew((std::size_t)nnew * 3u, 0.0), stepSumQNew((std::size_t)nnew * 3u, 0.0);
-
     std::vector<double> steadySigmaNew((std::size_t)nnew * 6u, 0.0), stepSigmaNew((std::size_t)nnew * 6u, 0.0);
     std::vector<double> stepInterSigmaNew((std::size_t)nnew * 6u, 0.0), stepSumSigmaNew((std::size_t)nnew * 6u, 0.0);
-
     std::vector<double> steadyQrNew((std::size_t)nnew * 4u, 0.0), stepQrNew((std::size_t)nnew * 4u, 0.0);
     std::vector<double> stepInterQrNew((std::size_t)nnew * 4u, 0.0), stepSumQrNew((std::size_t)nnew * 4u, 0.0);
     std::vector<double> sparseStateNewField((std::size_t)nnew, 0.0);
     std::vector<double> sparseAccumStepsNewField((std::size_t)nnew, 0.0);
-
     const std::vector<FieldDesc> recvFields = {
         {&crmaxNew, 1},
         {&remColNew, 1},
@@ -1044,7 +954,6 @@ bool dynamicDSMC::migrateCellFieldsPacket()
     };
     if (packetWidth(recvFields) != fieldWidth)
         return false;
-
     std::vector<int> sendCounts((std::size_t)nrank, 0);
     for (int oldLocal = 0; oldLocal < (int)oldGids.size(); ++oldLocal)
     {
@@ -1057,7 +966,6 @@ bool dynamicDSMC::migrateCellFieldsPacket()
                  << " owner=" << dst << endl;
             return false;
         }
-
         if (dst == this->mpi->c_rank)
         {
             const int lc = this->DSMCprocess->localOfGlobalCell(gid);
@@ -1075,7 +983,6 @@ bool dynamicDSMC::migrateCellFieldsPacket()
             ++sendCounts[(std::size_t)dst];
         }
     }
-
     std::vector<int> sdispls;
     int sendTotal = 0;
     sdispls.assign((std::size_t)nrank, 0);
@@ -1084,11 +991,9 @@ bool dynamicDSMC::migrateCellFieldsPacket()
         sdispls[(std::size_t)r] = sendTotal;
         sendTotal += sendCounts[(std::size_t)r];
     }
-
     std::vector<int> sendGids((std::size_t)sendTotal, 0);
     std::vector<double> sendValues((std::size_t)sendTotal * (std::size_t)fieldWidth, 0.0);
     std::vector<int> cursor = sdispls;
-
     for (int oldLocal = 0; oldLocal < (int)oldGids.size(); ++oldLocal)
     {
         const int gid = oldGids[(std::size_t)oldLocal];
@@ -1097,14 +1002,12 @@ bool dynamicDSMC::migrateCellFieldsPacket()
             continue;
         if (dst < 0 || dst >= nrank)
             return false;
-
         const int slot = cursor[(std::size_t)dst]++;
         sendGids[(std::size_t)slot] = gid;
         const std::size_t base = (std::size_t)slot * (std::size_t)fieldWidth;
         int pos = 0;
         packFields(sendFields, oldLocal, sendValues, base, pos);
     }
-
     std::vector<int> recvGids;
     std::vector<double> recvValues;
     if (this->mpass == nullptr ||
@@ -1116,53 +1019,43 @@ bool dynamicDSMC::migrateCellFieldsPacket()
                                                       recvValues,
                                                       *this->mpi))
         return false;
-
     const int recvTotal = (int)recvGids.size();
     for (int j = 0; j < recvTotal; ++j)
     {
         const int gid = recvGids[(std::size_t)j];
         const int lc = this->DSMCprocess->localOfGlobalCell(gid);
         if (lc < 0 || lc >= nnew) continue;
-
         const std::size_t base = (std::size_t)j * (std::size_t)fieldWidth;
         int pos = 0;
         unpackFields(recvFields, lc, recvValues, base, pos);
     }
-
     this->partinit->crmax.swap(crmaxNew);
     this->partinit->remainderincoll.swap(remColNew);
     this->partinit->remainderinpre.swap(remPreNew);
-
     this->DSMCprocess->steady_rho.swap(steadyRhoNew);
     this->DSMCprocess->step_rho.swap(stepRhoNew);
     this->DSMCprocess->stepinter_rho.swap(stepInterRhoNew);
     this->DSMCprocess->stepsum_rho.swap(stepSumRhoNew);
-
     this->DSMCprocess->steady_T.swap(steadyTNew);
     this->DSMCprocess->step_T.swap(stepTNew);
     this->DSMCprocess->stepinter_T.swap(stepInterTNew);
     this->DSMCprocess->stepsum_T.swap(stepSumTNew);
-
     this->DSMCprocess->steady_U.swap(steadyUNew);
     this->DSMCprocess->step_U.swap(stepUNew);
     this->DSMCprocess->stepinter_U.swap(stepInterUNew);
     this->DSMCprocess->stepsum_U.swap(stepSumUNew);
-
     this->DSMCprocess->steady_q.swap(steadyQNew);
     this->DSMCprocess->step_q.swap(stepQNew);
     this->DSMCprocess->stepinter_q.swap(stepInterQNew);
     this->DSMCprocess->stepsum_q.swap(stepSumQNew);
-
     this->DSMCprocess->steady_sigma.swap(steadySigmaNew);
     this->DSMCprocess->step_sigma.swap(stepSigmaNew);
     this->DSMCprocess->stepinter_sigma.swap(stepInterSigmaNew);
     this->DSMCprocess->stepsum_sigma.swap(stepSumSigmaNew);
-
     this->DSMCprocess->steady_qr.swap(steadyQrNew);
     this->DSMCprocess->step_qr.swap(stepQrNew);
     this->DSMCprocess->stepinter_qr.swap(stepInterQrNew);
     this->DSMCprocess->stepsum_qr.swap(stepSumQrNew);
-
     std::vector<unsigned char> sparseStateNew(
         (std::size_t)nnew, ProcessDSMC::DSMC2NS_SPARSE_NORMAL);
     std::vector<int> sparseAccumStepsNew((std::size_t)nnew, 0);
@@ -1186,11 +1079,9 @@ bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<partic
 {
     if (this->mpi == nullptr || !this->mpi->active()) return true;
     if (this->partinit == nullptr || this->DSMCprocess == nullptr) return false;
-
     const int nnew = this->DSMCprocess->iNcell;
     this->partinit->cell_particles_curr.clear();
     this->partinit->cell_particles_curr.resize((std::size_t)nnew);
-
     std::vector<int> counts((std::size_t)nnew, 0);
     for (std::size_t i = 0; i < particles.size(); ++i)
     {
@@ -1205,44 +1096,34 @@ bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<partic
         }
         ++counts[(std::size_t)local];
     }
-
     this->DSMCprocess->clearNextParticleBuffers();
     for (int lc = 0; lc < nnew; ++lc)
     {
         ParticleBucketSoA& bucket =
             this->partinit->cell_particles_curr[(std::size_t)lc];
-
         const int want = counts[(std::size_t)lc];
         if (want > 0)
             bucket.reserve((std::size_t)want);
     }
-
     for (std::size_t i = 0; i < particles.size(); ++i)
     {
         particle p = particles[i];
-
         const int gid = p.p_mesh_serial;
         const int local = this->DSMCprocess->localOfGlobalCell(gid);
-
         if (local < 0 || local >= nnew)
             return false;
-
         ParticleBucketSoA& bucket =
             this->partinit->cell_particles_curr[(std::size_t)local];
-
         p.p_serial = (int)bucket.size();
         p.p_rank_serial = this->mpi->c_rank;
         p.p_mesh_serial = local;
         p.dt_left = 0.0;
-
         bucket.push_back(p);
     }
-
     for (int lc = 0; lc < nnew; ++lc)
     {
         const int gid = this->DSMCprocess->globalOfLocalCell(lc);
         if (gid < 0 || gid >= this->mess.Ncell) continue;
-
         ParticleBucketSoA& bucket =
             this->partinit->cell_particles_curr[(std::size_t)lc];
         const std::size_t bucketSize = bucket.size();
@@ -1262,7 +1143,6 @@ bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<partic
                          (int)bucketSize);
         }
     }
-
 #ifdef CHECK_PARTICLE_BUCKETS
     this->DSMCprocess->checkParticleBucketConsistency("dynamic_repartition_rebuild");
 #endif
@@ -1272,7 +1152,6 @@ bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<partic
 void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
 {
     if (this->mpi == nullptr || this->DSMCprocess == nullptr || this->mess.Ncell <= 0) return;
-
     vector<int> particle_load((std::size_t)this->mess.Ncell, 0);
     std::vector<int> localCellIds;
     std::vector<int> localParticleLoads;
@@ -1288,12 +1167,10 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             localParticleLoads.push_back(legacyCellLoadWeight(this->DSMCprocess, meshindex));
         }
     }
-
     const int localEntryCount = (int)localCellIds.size();
     std::vector<int> recvCounts;
     if (this->mpi->root())
         recvCounts.assign((std::size_t)this->size, 0);
-
     MPI_Gather(&localEntryCount,
                1,
                MPI_INT,
@@ -1302,7 +1179,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                MPI_INT,
                0,
                this->comm);
-
     std::vector<int> displs;
     int totalEntries = 0;
     if (this->mpi->root())
@@ -1314,7 +1190,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             totalEntries += recvCounts[(std::size_t)r];
         }
     }
-
     std::vector<int> allCellIds;
     std::vector<int> allParticleLoads;
     if (this->mpi->root())
@@ -1322,7 +1197,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
         allCellIds.assign((std::size_t)totalEntries, 0);
         allParticleLoads.assign((std::size_t)totalEntries, 0);
     }
-
     MPI_Gatherv(localEntryCount > 0 ? localCellIds.data() : nullptr,
                 localEntryCount,
                 MPI_INT,
@@ -1341,7 +1215,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                 MPI_INT,
                 0,
                 this->comm);
-
     if (this->mpi->root())
     {
         for (int i = 0; i < totalEntries; ++i)
@@ -1352,10 +1225,8 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
         }
         cell_load = particle_load;
     }
-
     if (!this->DSMCprocess->enable_partition_time_weights)
         return;
-
     std::vector<int> localTimeCellIds;
     std::vector<double> localTimeValues;
     if (this->mpi->active())
@@ -1380,12 +1251,10 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
     {
         this->DSMCprocess->ensure_partition_time_storage();
     }
-
     const int localTimeCount = (int)localTimeCellIds.size();
     std::vector<int> timeRecvCounts;
     if (this->mpi->root())
         timeRecvCounts.assign((std::size_t)this->size, 0);
-
     MPI_Gather(&localTimeCount,
                1,
                MPI_INT,
@@ -1394,7 +1263,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                MPI_INT,
                0,
                this->comm);
-
     std::vector<int> timeDispls;
     int totalTimeEntries = 0;
     if (this->mpi->root())
@@ -1406,7 +1274,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             totalTimeEntries += timeRecvCounts[(std::size_t)r];
         }
     }
-
     std::vector<int> allTimeCellIds;
     std::vector<double> allTimeValues;
     if (this->mpi->root())
@@ -1414,7 +1281,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
         allTimeCellIds.assign((std::size_t)totalTimeEntries, 0);
         allTimeValues.assign((std::size_t)totalTimeEntries, 0.0);
     }
-
     MPI_Gatherv(localTimeCount > 0 ? localTimeCellIds.data() : nullptr,
                 localTimeCount,
                 MPI_INT,
@@ -1433,7 +1299,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                 MPI_DOUBLE,
                 0,
                 this->comm);
-
     if (this->mpi->root())
     {
         std::vector<double> global_time((std::size_t)this->mess.Ncell, 0.0);
@@ -1443,7 +1308,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             if (cell >= 0 && cell < this->mess.Ncell)
                 global_time[(std::size_t)cell] += allTimeValues[(std::size_t)i];
         }
-
         if (totalTimeEntries > 0)
         {
             this->DSMCprocess->ensure_partition_time_storage();
@@ -1453,7 +1317,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                 const double sample = (global_time[(std::size_t)c] > 0.0 && std::isfinite(global_time[(std::size_t)c]))
                     ? global_time[(std::size_t)c]
                     : fallback;
-
                 double& ema = this->DSMCprocess->cell_time_weight_ema[(std::size_t)c];
                 if (ema > 0.0 && std::isfinite(ema))
                     ema = this->DSMCprocess->cell_time_weight_ema_alpha * sample +
@@ -1461,7 +1324,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
                 else
                     ema = sample;
             }
-
             double time_avg = 0.0;
             int time_count = 0;
             for (double t : this->DSMCprocess->cell_time_weight_ema)
@@ -1472,7 +1334,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             }
             if (time_count > 0) time_avg /= (double)time_count;
             if (!(time_avg > 0.0) || !std::isfinite(time_avg)) time_avg = 1.0;
-
             for (int c = 0; c < this->mess.Ncell; ++c)
             {
                 const double fallback = (double)std::max(1, particle_load[(std::size_t)c]);
@@ -1485,7 +1346,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
             }
         }
     }
-
     this->DSMCprocess->reset_partition_time_weights();
 }
 
@@ -1502,10 +1362,8 @@ void dynamicDSMC::rebuildDsmcAfterRepartition()
 void dynamicDSMC::average_load_calculate()
 {
     if (!this->mpi->active()) return;
-
     vector<int> cell_load(this->mess.Ncell, 0);
     int rank_load = 0;
-
     for (int i = 0; i < this->DSMCprocess->iNcell; i++)
     {
         int meshindex = this->DSMCprocess->globalOfLocalCell(i);
@@ -1514,11 +1372,9 @@ void dynamicDSMC::average_load_calculate()
         rank_load += pnum;
         cell_load[meshindex] = pnum;
     }
-
     std::vector<int> cell_load_global;
     if (this->c_rank == 0)
         cell_load_global.assign((std::size_t)this->mess.Ncell, 0);
-
     MPI_Reduce(cell_load.data(),
                this->c_rank == 0 ? cell_load_global.data() : nullptr,
                this->mess.Ncell,
@@ -1527,9 +1383,7 @@ void dynamicDSMC::average_load_calculate()
                0,
                calGroup);
     vector<int> rank_load_all(this->c_size, 0);
-
     MPI_Gather(&rank_load, 1, MPI_INT, rank_load_all.data(), 1, MPI_INT, 0, calGroup);
-
     if (this->c_rank != 0) return;
     double avrg_rank_load = 0.0;
     for (int i = 0; i < this->c_size; i++)

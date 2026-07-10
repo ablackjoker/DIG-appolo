@@ -4,12 +4,10 @@
 #include "ProcessDSMC.h"
 using namespace std;
 
-
 class dynamicDSMC
 {
 private:
     std::vector<particle> repartitionParticles;
-
     bool planRepartitionByLoad(idx_t nParts,
                                const std::vector<int>& cellLoadGlobal);
     void syncDsmcCellOwners();
@@ -30,29 +28,21 @@ private:
     mutable std::vector<idx_t> cachedLineGraphAdjncy;
     mutable std::vector<int> cachedLineGraphEdgeCell;
     mutable std::vector<int> cachedLineGraphEdgeSlot;
-
 public:
-
     meshImport *mesh = NULL;
-
     meshMessage mess;
-    
     ProcessDSMC *DSMCprocess = NULL;
     MeshparticalInitial *partinit = NULL;
-
     int rank, size, c_rank,c_size;
     std::vector<int> lx, ly, match, slack, fa;
     std::vector<bool> visx, visy;
     std::vector<std::vector<int>> Graph;
-
     MPI_Comm comm;
     MPI_Comm calGroup;
     MessagePassing *mpass = NULL;
     const MpiContext* mpi = nullptr;
-
     dynamicDSMC(meshImport *mesh, MessagePassing *mpass, meshMessage mess , MeshparticalInitial *partinit, ProcessDSMC *DSMCprocess, const MpiContext& mpiCtx);
     ~dynamicDSMC();
-
     void dynamic_rankload_distribute(idx_t nParts);
     void compute_cell_load_local(vector<int>& cell_load);
     void average_load_calculate();

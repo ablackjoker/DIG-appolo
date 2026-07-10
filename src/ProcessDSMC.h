@@ -19,7 +19,6 @@ class ProcessDSMC
 {
 private:
     enum class ParticleTraceOutcome { LocalDone, SentRemote, Dropped };
-
     enum MacroIndex
     {
         MACRO_RHO = 0,
@@ -42,7 +41,6 @@ private:
         MACRO_QRZ,
         MACRO_WIDTH
     };
-
     enum StressIndex
     {
         STRESS_XX = 0,
@@ -53,7 +51,6 @@ private:
         STRESS_ZX,
         STRESS_WIDTH
     };
-
     enum HeatIndex
     {
         HEAT_X = 0,
@@ -61,7 +58,6 @@ private:
         HEAT_Z,
         HEAT_WIDTH
     };
-
     enum AxisIndex
     {
         AXIS_X = 0,
@@ -69,7 +65,6 @@ private:
         AXIS_Z,
         AXIS_WIDTH
     };
-
     enum RotHeatIndex
     {
         ROT_ENERGY = 0,
@@ -78,7 +73,6 @@ private:
         ROT_HEAT_Z,
         ROT_HEAT_WIDTH
     };
-
     enum FluxIndex
     {
         FLUX_RHO = 0,
@@ -89,7 +83,6 @@ private:
         FLUX_ROT,
         FLUX_WIDTH
     };
-
     enum WallNormalIndex
     {
         WALL_N1X = 0,
@@ -100,7 +93,6 @@ private:
         WALL_N2Z,
         WALL_NORMAL_WIDTH
     };
-
     struct FaceTriCache
     {
         int face = -1;
@@ -109,7 +101,6 @@ private:
         double e1x = 0.0, e1y = 0.0, e1z = 0.0;
         double e2x = 0.0, e2y = 0.0, e2z = 0.0;
     };
-
     struct FaceCrossCache
     {
         int gface = -1;
@@ -133,7 +124,6 @@ private:
                                {0.0, 0.0, 0.0},
                                {0.0, 0.0, 0.0}};
     };
-
     struct FaceTriangleList
     {
         int count = 0;
@@ -141,14 +131,12 @@ private:
         int tag[2] = {-1, -1};
         unsigned char splitTag = meshImport::FACE_SPLIT_INVALID;
     };
-
     struct IntersectionHit
     {
         int face = -2;
         int tri = -1;
         double t = 0.0;
     };
-
     struct MacroMoments
     {
         double rho = 0.0;
@@ -158,7 +146,6 @@ private:
         double heat[HEAT_WIDTH] = {0.0, 0.0, 0.0};
         double rot[ROT_HEAT_WIDTH] = {0.0, 0.0, 0.0, 0.0};
     };
-
     struct BoundaryEmitPatch
     {
         DsmcReservoirBoundaryState reservoirState = DSMC_RESERVOIR_INLET;
@@ -186,7 +173,6 @@ private:
         double uyPhysical = 0.0;
         double uzPhysical = 0.0;
         double tPhysical = 0.0;
-
         double sx = 0.0;
         double sy = 0.0;
         double sz = 0.0;
@@ -195,10 +181,8 @@ private:
         double snp = 0.0;
         double fs1 = 0.0;
         double fs2 = 0.0;
-
         double tNormalized = 0.0;
     };
-
     struct BoundarySurfaceTally
     {
         double hits = 0.0;
@@ -206,7 +190,6 @@ private:
         double energyTransDelta = 0.0;
         double energyRotDelta = 0.0;
     };
-
     struct ParticleTransportOps
     {
         static bool mapIncomingFaceCellLocal(
@@ -218,7 +201,6 @@ private:
             ProcessDSMC& self, particle& part, int& cellid, int& crossfid,
             int& tag_triangle, double& dtleft, int& ifout, bool inclusive_hit);
     };
-
     vector<int> cellTriOffset;
     vector<FaceTriCache> cellTriCache;
     vector<FaceCrossCache> faceCrossCache;
@@ -229,7 +211,6 @@ private:
     vector<int> cacheTouchedCells;
     vector<double> out2dat_buffer;
     unsigned int cacheTouchedEpoch = 1u;
-
     void rebuildFaceTraversalCache();
     void rebuildFaceCrossCache();
     void rebuildBoundaryEmitCache();
@@ -281,7 +262,6 @@ private:
     void recordBoundaryStressHeat(int localFace, const double velocityPre[3],
                                   const double velocityPost[3],
                                   double rotPre, double rotPost);
-
 public:
     enum Dsmc2NsSparseState : unsigned char
     {
@@ -289,14 +269,9 @@ public:
         DSMC2NS_SPARSE_ACCUMULATING = 1,
         DSMC2NS_SPARSE_RELEASED = 2
     };
-
-    
-    
-    
     vector<double> steady_rho, steady_T, steady_U, steady_sigma, steady_q, steady_qr, step_rho, step_T, step_U, step_sigma, step_q;
     vector<double> step_qr, stepinter_rho, stepinter_T, stepinter_U, stepinter_sigma, stepinter_q, stepinter_qr;
     vector<double> stepsum_rho, stepsum_T, stepsum_U, stepsum_sigma, stepsum_q, stepsum_qr;
-    
     vector<double> record, final_record, local;
     vector<double> dsmc2ns_window_samples;
     vector<char> dsmc2ns_window_valid;
@@ -310,23 +285,17 @@ public:
     int tol_collision_pairs;
     int tol_collision_times;
     int istep;
-
     MPI_Comm calGroup;
     MPI_Comm comm;
-
     meshMessage mess;
-
     vector<DsmcCell> cells;
     vector<DsmcEdge> edges;
     vector<double> localPointXY;
     vector<unsigned char> faceSplitTag;
-    
     int rank, size, c_rank, c_size; 
     int iNcell, nface;
-
     int ncell, startGrids, endGrids;
     int Madata = MACRO_WIDTH;
-
     vector<int> rank_cell_all;
     PartitionState3D partitionState;
     vector<int> old_local_cell;
@@ -335,8 +304,6 @@ public:
     vector<int> faceGid2LocalDense;
     vector<int> migrationPeerRanks;
     vector<char> migrationPeerMask;
-
-
     vector<particle> recv_cache;
     vector<vector<particle>> migrate_send_particles, migrate_recv_particles;
     vector<vector<DtleftPacket>> dtleft_send_packets, dtleft_recv_packets;
@@ -346,25 +313,18 @@ public:
     unordered_map<int, double> cell_time_weight_accum;
     vector<double> cell_time_weight_ema;
     double cell_time_weight_ema_alpha = 0.5;
-
-    vector<int> wallVis, inletVis, outletVis, symmetry;
-    
-    vector<int> wallVisMove, inletVisMove, outletVisMove;
+    vector<int> wallVis, inletVis, outletVis, symmetry, topwall;
+    vector<int> wallVisMove, inletVisMove, outletVisMove,topwallMove;
     BoundaryConditionTable boundaryTable;
     meshImport *mesh = NULL;
     MeshparticalInitial *partinit = NULL;
     const MpiContext* mpi = nullptr;
     map<int, WallNormalPair> wallMap;
-
-
     ProcessDSMC();
     ~ProcessDSMC();
-
     ProcessDSMC(meshImport *mesh, meshMessage mess, MeshparticalInitial *partinit,const MpiContext& mpiCtx);
-
     void macro_list_setup();
     void initial_chache_storage();
-
     void variable_deep_copy();
     bool boundaryClassification();
     void wall_normal();
@@ -389,44 +349,30 @@ public:
     void ensure_partition_time_storage();
     void reset_partition_time_weights();
     void accumulate_cell_time_weight(int globalCell, double dt);
-
     void macro_list_delete();
     void processFacesQuadNormals(const vector<int>& visList);
-
-
-
     void advection(int istep);
     void tryTri(int faceid, int triTag, double *A,  double *B,  double *C, particle* part, double& bestT, int& bestFace, int& bestTri);
     void loadPoint(int idx, double *P);
     int check_intersection2(particle* part, int Ncell_id, double& min_t, int acrossfid,int& tag_triangle);
     int tetra_intersection(particle* part, int Ncell_id, double& min_t, int acrossfid);
     void compute_plane_equation(double* Apointer,double* Bpointer, double* Cpointer,double* a, double* b, double* c, double* d);
-    
     bool ray_triangle_intersect(double* location, double* velocity, double* Apointer,double* Bpointer, double* Cpointer, double& t, double& u, double& v);
     void CrossboundarySwitch(particle* part, int& cellid, int& ifout, double& dtleft,int crossfid,double t,int triangle_tag);
     void normalize(double vec[3]);
     void buildRotationMatrix(double* norm, double (*R)[3]);
-
     void preprocesseffquad(int istep);
     void dt_ray_crosscell();
-
     void scalar_product(double* norm1, double* norm2, double scalar, int dim);
-
-
     void cache2chain();
     bool migrateParticlesOnce();
     bool cache2chain_dt(int localNeedFull, int globalNeedFull);
-
-    
     void current_macro_zero();
     void stepinter_macro_zero(int icell);
     void statistic_macroPre();
     void statistic_macro(int istep);
     bool out2dat(int istep);
     bool outBoundaryStressHeat(int istep);
-
-
-
     double collision_diameter(double cr);
     double collision_diameter(double cr, double collisionDiameterPrefactor);
     void collisionDSMC();

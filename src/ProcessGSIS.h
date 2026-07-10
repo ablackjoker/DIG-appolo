@@ -7,18 +7,14 @@
 class ProcessGSIS
 {
 private:
-
-
     vector<int> nsStartByRank;
     vector<int> nsEndByRank;
-
     void refreshNsOwnerRanges(bool force = false);
     int nsOwnerOfGlobalCell(int globalCell) const;
     int nsLocalOfGlobalCell(int globalCell) const;
     int dsmcOwnerOfGlobalCell(int globalCell) const;
     int dsmcLocalOfGlobalCell(int globalCell) const;
     void synchronizeBoundaryTables();
-
 public:
     struct Dsmc2NsCouplingConfig
     {
@@ -26,20 +22,18 @@ public:
         double macroMinSampleCount = 3.0;
         bool highOrderSampleFilterEnabled = false;
         double highOrderMinSampleCount = 10.0;
-
-        bool macroLowerBoundsEnabled = true;
+        bool macroLowerBoundsEnabled = false;
         bool macroUpperBoundsEnabled = false;
-        double rhoMin = 1.0e-8;
+        double rhoMin = 2.0e-3;
         double rhoMax = 1.0e300;
-        double tMin = 1.0e-6;
+        double tMin = 2.0e-3;
         double tMax = 1.0e300;
-        double trMin = 1.0e-6;
+        double trMin = 2.0e-3;
         double trMax = 1.0e300;
         double maMin = 0.0;
         double maMax = 50.0;
-        bool knCellUpperBoundEnabled = true;
+        bool knCellUpperBoundEnabled = false;
         double knCellMax = 0.3;
-
         bool highOrderLowerBoundsEnabled = false;
         bool highOrderUpperBoundsEnabled = false;
         double stressRatioMin = 0.0;
@@ -48,15 +42,12 @@ public:
         double heatRatioMax = 20.0;
         double rotHeatRatioMin = 0.0;
         double rotHeatRatioMax = 20.0;
-
         bool lowOrderHarmonicEnabled = true;
         int lowOrderHarmonicIterations = 5;
         double lowOrderHarmonicOmega = 0.8;
         double highOrderDampingCoeff = 0.2;
-
-        bool logFilterSummary = true;
+        bool logFilterSummary = false;
     };
-
     enum Dsmc2NsMacroSource : unsigned char
     {
         MACRO_REJECTED = 0,
@@ -65,7 +56,6 @@ public:
         MACRO_INTERPOLATED = 3,
         MACRO_OLD_NS = 4
     };
-
     meshImport *mesh = NULL;
     MacroSolver *pnsSolver = NULL;
     ProcessDSMC *process = NULL;
@@ -89,11 +79,9 @@ public:
     bool dsmc2ns_acceptance_ready = false;
     bool use_exp_weighted_dsmc2ns = true;
     Dsmc2NsCouplingConfig dsmc2nsCoupling;
-
     ProcessGSIS();
     ProcessGSIS(meshImport *mesh, ProcessDSMC *process, MeshparticalInitial *partinit, MacroSolver *nsprocess, const MpiContext& mpiCtx);
     ~ProcessGSIS();
-
     void variablesetup();
     void regsisvariables();
     void NS2DSMC();

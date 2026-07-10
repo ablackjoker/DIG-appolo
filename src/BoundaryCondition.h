@@ -9,7 +9,8 @@ enum class BoundaryRole : unsigned char
     Inlet,
     Outlet,
     Wall,
-    Symmetry
+    Symmetry,
+    TopWall
 };
 
 enum class BoundaryModel : unsigned char
@@ -27,15 +28,11 @@ enum class BoundaryModel : unsigned char
 struct BoundaryCondition
 {
     int tag = -1;
-
     BoundaryRole nsRole = BoundaryRole::None;
     BoundaryModel nsModel = BoundaryModel::None;
-
     BoundaryRole dsmcRole = BoundaryRole::None;
     BoundaryModel dsmcModel = BoundaryModel::None;
-
     bool injectParticles = false;
-
     double pressure = 0.0;
     double rho = 1.0;
     double ux = 0.0;
@@ -52,11 +49,9 @@ public:
     {
         loadDefaults();
     }
-
     void loadDefaults()
     {
         conditions.clear();
-
         BoundaryCondition interfaceBc;
         interfaceBc.tag = 3;
         interfaceBc.nsRole = BoundaryRole::Interface;
@@ -64,27 +59,18 @@ public:
         interfaceBc.dsmcRole = BoundaryRole::Interface;
         interfaceBc.dsmcModel = BoundaryModel::None;
         addOrReplace(interfaceBc);
-
-        BoundaryCondition inletBc;
-        inletBc.tag = 4;
-        inletBc.nsRole = BoundaryRole::Inlet;
-        inletBc.nsModel = BoundaryModel::FreestreamInlet;
-        inletBc.dsmcRole = BoundaryRole::Inlet;
-        inletBc.dsmcModel = BoundaryModel::FreestreamInlet;
-        inletBc.injectParticles = true;
-        addOrReplace(inletBc);
-
-        BoundaryCondition outletBc;
-        outletBc.tag = 5;
-        outletBc.nsRole = BoundaryRole::Outlet;
-        outletBc.nsModel = BoundaryModel::OpenOutlet;
-        outletBc.dsmcRole = BoundaryRole::Outlet;
-        outletBc.dsmcModel = BoundaryModel::OpenOutlet;
-        outletBc.injectParticles = false;
-        addOrReplace(outletBc);
-
+        BoundaryCondition topWallBc;
+        topWallBc.tag = 4;
+        topWallBc.nsRole = BoundaryRole::TopWall;
+        topWallBc.nsModel = BoundaryModel::IsothermalWall;
+        topWallBc.dsmcRole = BoundaryRole::TopWall;
+        topWallBc.dsmcModel = BoundaryModel::DiffuseWall;
+        topWallBc.injectParticles = false;
+        topWallBc.temperature = 1.0;
+        topWallBc.ux = 1.0;
+        addOrReplace(topWallBc);
         BoundaryCondition wallBc;
-        wallBc.tag = 6;
+        wallBc.tag = 5;
         wallBc.nsRole = BoundaryRole::Wall;
         wallBc.nsModel = BoundaryModel::IsothermalWall;
         wallBc.dsmcRole = BoundaryRole::Wall;
@@ -92,7 +78,6 @@ public:
         wallBc.temperature = 1.0;
         addOrReplace(wallBc);
     }
-
     void addOrReplace(const BoundaryCondition& bc)
     {
         for (BoundaryCondition& item : conditions)
@@ -105,7 +90,6 @@ public:
         }
         conditions.push_back(bc);
     }
-
     const BoundaryCondition& byTag(int tag) const
     {
         for (const BoundaryCondition& item : conditions)
@@ -115,7 +99,6 @@ public:
         }
         return fallback;
     }
-
 private:
     std::vector<BoundaryCondition> conditions;
     BoundaryCondition fallback;

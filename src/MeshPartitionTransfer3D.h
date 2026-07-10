@@ -16,14 +16,12 @@ struct PartitionState3D
     std::vector<int> ownerByCell;
     std::vector<std::vector<int>> cellsByRank;
     int epoch = 0;
-
     void clear()
     {
         ownerByCell.clear();
         cellsByRank.clear();
         epoch = 0;
     }
-
     void assign(const std::vector<int> &owners, int rankCount, int nextEpoch = -1)
     {
         ownerByCell = owners;
@@ -33,7 +31,6 @@ struct PartitionState3D
         else
             ++epoch;
     }
-
     void rebuildCellsByRank(int rankCount)
     {
         cellsByRank.assign((rankCount > 0) ? (std::size_t)rankCount : 0u, std::vector<int>());
@@ -44,7 +41,6 @@ struct PartitionState3D
                 cellsByRank[(std::size_t)owner].push_back(gid);
         }
     }
-
     int ownerOf(int globalCell) const
     {
         if (globalCell < 0 || globalCell >= (int)ownerByCell.size()) return -1;
@@ -72,14 +68,12 @@ public:
                             MeshparticalInitial *partinit,
                             MessagePassing *mpass,
                             const MpiContext &mpiCtx);
-
     bool broadcastMeshMessage(meshMessage &mess) const;
     bool initialPartitionAndDistribute(int haloRings);
     bool distributeGeometryByOwners(const PartitionState3D &state, int haloRings);
     LocalGeometry3D takeLocalGeometry();
     bool installLocalGeometryTo(ProcessDSMC &process);
     bool broadcastInitialParticleCounts(std::vector<int> &npcByCell) const;
-
 private:
     struct LocalGeometryCounts3D
     {
@@ -88,7 +82,6 @@ private:
         int nface = 0;
         int nxyz = 0;
     };
-
     struct MeshPartitionPackage3D
     {
         int ownedCellCount = 0;
@@ -100,18 +93,15 @@ private:
         std::vector<int> nodeGids;
         std::vector<double> nodeXyz;
     };
-
     struct RootScatterBuffers
     {
         std::vector<int> cellCounts;
         std::vector<int> ownedCounts;
         std::vector<int> faceCounts;
         std::vector<int> xyzCounts;
-
         std::vector<int> cellDispls;
         std::vector<int> faceDispls;
         std::vector<int> xyzDispls;
-
         std::vector<int> cellGids;
         std::vector<DsmcCell> cells;
         std::vector<int> faceGids;
@@ -119,7 +109,6 @@ private:
         std::vector<unsigned char> faceSplitTags;
         std::vector<double> nodeXyz;
     };
-
     struct HaloBuildResult
     {
         std::vector<int> ownedCellGids;
@@ -130,14 +119,11 @@ private:
         std::vector<int> allCellLayers;
         int ownedCount = 0;
     };
-
     bool isRoot() const;
     int worldFromCal(int calRank) const;
-
     bool initialPartitionRoot(std::vector<int> &rankCellAll) const;
     void syncDsmcCellOwners(const std::vector<int> &rankCellAll) const;
     void restoreOriginalMesh() const;
-
     void initializeCounts(RootScatterBuffers &buffers) const;
     void appendPackageToRootBuffers(int worldRank,
                                     const MeshPartitionPackage3D &package,
@@ -156,7 +142,6 @@ private:
     bool buildRootBuffers(const PartitionState3D &state,
                           int haloRings,
                           RootScatterBuffers &buffers) const;
-
     HaloBuildResult buildOwnedHaloCells(int calRank,
                                         const PartitionState3D &state,
                                         int haloRings) const;
@@ -172,13 +157,11 @@ private:
                                    const PartitionState3D &state,
                                    int haloRings,
                                    const HaloBuildResult &halo) const;
-
     bool scatterCounts(const RootScatterBuffers &buffers,
                        int &myNcell,
                        int &myOwnedNcell,
                        int &myNface,
                        int &myNxyz) const;
-
     bool scatterGeometry(const RootScatterBuffers &buffers,
                          MPI_Datatype mpiCell,
                          MPI_Datatype mpiEdge,
@@ -191,14 +174,11 @@ private:
                          std::vector<DsmcEdge> &edges,
                          std::vector<unsigned char> &faceSplitTags,
                          std::vector<double> &localPointXyz) const;
-
     void rebuildInitialMaps() const;
-
     meshImport *m_mesh = nullptr;
     MeshparticalInitial *m_partinit = nullptr;
     MessagePassing *m_mpass = nullptr;
     const MpiContext *m_mpi = nullptr;
-
     mutable std::vector<int> m_cellVisitStamp;
     mutable int m_cellVisitEpoch = 1;
     mutable std::vector<int> m_faceVisitStamp;

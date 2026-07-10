@@ -7,7 +7,6 @@
 # include <unordered_map>
 using namespace std;
 
-
 struct particle
 {
     int p_serial;
@@ -40,11 +39,9 @@ struct ParticleBucketSoA
     std::vector<double> pz;
     std::vector<double> p_Ir;
     std::vector<double> dt_left;
-
     size_t size() const { return p_serial.size(); }
     bool empty() const { return p_serial.empty(); }
     size_t capacity() const { return p_serial.capacity(); }
-
     void clear()
     {
         p_serial.clear();
@@ -59,7 +56,6 @@ struct ParticleBucketSoA
         p_Ir.clear();
         dt_left.clear();
     }
-
     void reserve(size_t n)
     {
         p_serial.reserve(n);
@@ -74,7 +70,6 @@ struct ParticleBucketSoA
         p_Ir.reserve(n);
         dt_left.reserve(n);
     }
-
     void resize(size_t n)
     {
         p_serial.resize(n);
@@ -89,7 +84,6 @@ struct ParticleBucketSoA
         p_Ir.resize(n);
         dt_left.resize(n);
     }
-
     particle get(size_t i) const
     {
         particle part;
@@ -106,7 +100,6 @@ struct ParticleBucketSoA
         part.dt_left = dt_left[i];
         return part;
     }
-
     void set(size_t i, const particle &part)
     {
         p_serial[i] = part.p_serial;
@@ -121,7 +114,6 @@ struct ParticleBucketSoA
         p_Ir[i] = part.p_Ir;
         dt_left[i] = part.dt_left;
     }
-
     void push_back(const particle &part)
     {
         p_serial.push_back(part.p_serial);
@@ -136,7 +128,6 @@ struct ParticleBucketSoA
         p_Ir.push_back(part.p_Ir);
         dt_left.push_back(part.dt_left);
     }
-
     void pop_back()
     {
         p_serial.pop_back();
@@ -151,7 +142,6 @@ struct ParticleBucketSoA
         p_Ir.pop_back();
         dt_left.pop_back();
     }
-
     void append_bucket(ParticleBucketSoA &other)
     {
         const size_t addSize = other.size();
@@ -172,76 +162,51 @@ struct ParticleBucketSoA
     }
 };
 
-
 class MeshparticalInitial
 {
-
 private:
-    
 public:
     inline mt19937& thread_rng()
     {
         static thread_local mt19937 gen{std::random_device{}()};
         return gen;
     }
-    
     static std::uniform_real_distribution<double>& get_uniform() {
         static thread_local std::uniform_real_distribution<double> dis(0.0, 1.0);
         return dis;
     }
     meshImport *mesh = NULL;
     meshMessage mess; 
-    
-    
-    
-
     vector<DsmcCell> cells;
     vector<DsmcEdge> edges;
     vector<double> localPointXY;
     vector<unsigned char> faceSplitTag;
-
-
-
     const MpiContext* mpi = nullptr;
-    
     MessagePassing *mpass = NULL;
-
-
     int rank,size,c_rank,c_size;
     vector<int> local_cells;vector<int> face_gids;
     unordered_map<int,int> gid2local;unordered_map<int,int> face_gid2local;
     vector<int> rank_cell_all;
     PartitionState3D partitionState;
     bool partitionReady = false;
-    
     int my_ncell, my_nface;
     int my_owned_ncell = 0; 
-    
     MPI_Comm calGroup;
     MPI_Comm comm;
     vector<ParticleBucketSoA> cell_particles_curr;
     unordered_map<int, ParticleBucketSoA> cell_particles_next;
     vector<int> cell_particle_reserve_hint;
-    
     vector<double> crmax;
     vector<double> remainderincoll;
     vector<double> remainderinpre;
-
-
     MeshparticalInitial();
     ~MeshparticalInitial();
-    
     MeshparticalInitial(meshImport *mesh, meshMessage mess, MessagePassing *mpass, const MpiContext& mpiCtx);
-
     void module_variables();
     void allocateOwnedParticleBuckets();
-    
     int Iround(double x);
-    
     void adjust_particles(vector<double>& regions, int size, int delta);
-    
     void Np_tri_inititial(int i, vector<double>& Np_tri, int Np_exa);
-
     void meshfillpar(int i,vector<double>& Np_tri);
     void Collision_constant_initial();
     void CreateParticlesnode(int j,int i, int index0, int index1, int index2, const double center[DIM]);

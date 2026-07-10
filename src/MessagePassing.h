@@ -24,7 +24,6 @@ public:
     bool commitMyvis(MPI_Datatype &datatype);
     bool commitParticle(MPI_Datatype &datatype);
     bool commitDtleftPacket(MPI_Datatype &datatype);
-
     bool exchangeParticleVectors(std::vector<std::vector<particle>> &sendCache,
                                  std::vector<std::vector<particle>> &recvCache,
                                  const MpiContext &mpi,
@@ -34,7 +33,6 @@ public:
                                         const MpiContext &mpi,
                                         const std::vector<int> &peerRanks,
                                         int tag);
-
     bool exchangeDtleftPacketVectors(std::vector<std::vector<DtleftPacket>> &sendCache,
                                      std::vector<std::vector<DtleftPacket>> &recvCache,
                                      const MpiContext &mpi,
@@ -46,7 +44,6 @@ public:
                                             const std::vector<int> &peerRanks,
                                             int tag,
                                             bool *hadTraffic = nullptr);
-
     bool exchangeFixedWidthDoublePackets(const std::vector<int> &sendCounts,
                                          const std::vector<int> &sendGids,
                                          const std::vector<double> &sendValues,
