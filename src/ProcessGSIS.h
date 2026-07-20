@@ -117,6 +117,7 @@ public:
 // reconstructLowOrderForNS: couples DSMC data with macroscopic fields.
     void reconstructLowOrderForNS();
 // dampRejectedHighOrderForNS: couples DSMC data with macroscopic fields.
+    void reconstructHighOrderForNS();
     void dampRejectedHighOrderForNS();
 // molecular_velocity_change: updates particles or particle-derived state.
     void molecular_velocity_change();
