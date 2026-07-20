@@ -854,6 +854,7 @@ void ProcessGSIS::macro_iter_process(double maxError,int istep)
     MacroSolver *ns = this->pnsSolver;
     this->DSMC2NS();
     this->reconstructLowOrderForNS();
+    this->reconstructHighOrderForNS();
     MPI_Barrier(calGroup);
     ns->calcCellHot(istep);
     this->dampRejectedHighOrderForNS();
@@ -1507,6 +1508,101 @@ void ProcessGSIS::reconstructLowOrderForNS()
                  << " newOldNs=" << globalExtra[1]
                  << " haloUsed=" << globalExtra[2]
                  << " haloSkipped=" << globalExtra[3]
+                 << endl;
+        }
+    }
+}
+
+void ProcessGSIS::reconstructHighOrderForNS()
+{
+    if (!this->mpi->active()) return;
+
+    MacroSolver *ns = this->pnsSolver;
+    if (ns == nullptr || ns->d_sigmaq == nullptr || ns->cells == nullptr) return;
+
+    if ((int)this->ns_dsmc2ns_high_order_accepted.size() < ns->iNcell)
+        this->ns_dsmc2ns_high_order_accepted.resize((size_t)ns->iNcell, 0);
+
+    vector<array<double, VAR2>> oldSigma((size_t)ns->iNcell);
+    vector<char> oldHighAccepted((size_t)ns->iNcell, 0);
+    for (int i = 0; i < ns->iNcell; ++i)
+    {
+        oldHighAccepted[(size_t)i] =
+            ((size_t)i < this->ns_dsmc2ns_high_order_accepted.size() &&
+             this->ns_dsmc2ns_high_order_accepted[(size_t)i] != 0)
+                ? 1
+                : 0;
+        for (int k = 0; k < VAR2; ++k)
+            oldSigma[(size_t)i][(size_t)k] = ns->d_sigmaq[i][k];
+    }
+
+    long long localStats[4] = {0, 0, 0, 0};
+    for (int i = 0; i < ns->iNcell; ++i)
+    {
+        const unsigned char source =
+            ((size_t)i < this->ns_dsmc2ns_macro_source.size())
+                ? this->ns_dsmc2ns_macro_source[(size_t)i]
+                : MACRO_REJECTED;
+        if (source != MACRO_INTERPOLATED || oldHighAccepted[(size_t)i] != 0)
+            continue;
+
+        ++localStats[0];
+        array<double, VAR2> sum = array<double, VAR2>();
+        int count = 0;
+        for (int f = 0; f < NN; ++f)
+        {
+            const int nb = ns->cells[i].cell2cell[f];
+            if (nb < 0 || nb >= ns->iNcell)
+                continue;
+
+            const unsigned char nbSource =
+                ((size_t)nb < this->ns_dsmc2ns_macro_source.size())
+                    ? this->ns_dsmc2ns_macro_source[(size_t)nb]
+                    : MACRO_REJECTED;
+            const bool nbDirect =
+                nbSource == MACRO_DIRECT_DSMC ||
+                nbSource == MACRO_ACCUMULATED_DSMC;
+            const bool nbHighAccepted =
+                (size_t)nb < oldHighAccepted.size() &&
+                oldHighAccepted[(size_t)nb] != 0;
+            if (!nbDirect || !nbHighAccepted)
+                continue;
+
+            bool finite = true;
+            for (int k = 0; k < VAR2; ++k)
+                finite = finite && std::isfinite(oldSigma[(size_t)nb][(size_t)k]);
+            if (!finite)
+                continue;
+
+            for (int k = 0; k < VAR2; ++k)
+                sum[(size_t)k] += oldSigma[(size_t)nb][(size_t)k];
+            ++count;
+        }
+
+        if (count <= 0)
+        {
+            ++localStats[2];
+            continue;
+        }
+
+        for (int k = 0; k < VAR2; ++k)
+            ns->d_sigmaq[i][k] = sum[(size_t)k] / (double)count;
+        this->ns_dsmc2ns_high_order_accepted[(size_t)i] = 1;
+        ++localStats[1];
+        localStats[3] += count;
+    }
+
+    if (this->dsmc2nsCoupling.logFilterSummary)
+    {
+        long long globalStats[4] = {0, 0, 0, 0};
+        MPI_Allreduce(localStats, globalStats, 4, MPI_LONG_LONG, MPI_SUM, this->calGroup);
+        if (this->mpi->activeLeader())
+        {
+            cout << "HIGH_ORDER_AVERAGE"
+                 << " targets=" << globalStats[0]
+                 << " filled=" << globalStats[1]
+                 << " noNeighbor=" << globalStats[2]
+                 << " neighborSamples=" << globalStats[3]
                  << endl;
         }
     }

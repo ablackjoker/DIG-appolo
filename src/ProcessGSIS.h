@@ -91,6 +91,7 @@ public:
     bool isNsMpiHaloNeighborForLowOrder(const MacroSolver* ns, int cell, int faceSlot, int neighbor) const;
     void syncNsHaloLowOrderState();
     void reconstructLowOrderForNS();
+    void reconstructHighOrderForNS();
     void dampRejectedHighOrderForNS();
     void molecular_velocity_change();
     bool replication(int icell, int np_modify, double *u_ns, double T_ns, double Tr_ns);
